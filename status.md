@@ -167,119 +167,105 @@ curl -X POST http://localhost:3000/api/matches/{match-id}/score \
 
 ---
 
-## WHAT'S REMAINING (Out of Scope for MVP)
+## Tables that exist in DB
 
-### Features Intentionally Excluded
-These were listed in the original plan as "Exclude for MVP":
+### match_scores table
 
-1. **Double Elimination / Consolation Brackets**
-   - Current: Single-elimination only
-   - Future: Add losers bracket
+create table public.match_scores (
+  id uuid not null default gen_random_uuid (),
+  match_id uuid null,
+  scorer_id uuid null,
+  score_json jsonb null,
+  created_at timestamp with time zone null default now(),
+  constraint match_scores_pkey primary key (id),
+  constraint match_scores_match_id_fkey foreign KEY (match_id) references matches (id) on delete CASCADE,
+  constraint match_scores_scorer_id_fkey foreign KEY (scorer_id) references players (id)
+) TABLESPACE pg_default;
 
-2. **Paid Registration / Payments**
-   - Current: Free registration
-   - Future: Integrate Stripe or similar
+### matches table
 
-3. **Advanced Seeding Rules**
-   - Current: Simple DUPR descending sort
-   - Future: Gender divisions, skill brackets, manual seeding
+create table public.matches (
+  id uuid not null default gen_random_uuid (),
+  tournament_id uuid null,
+  round integer not null,
+  slot_a uuid null,
+  slot_b uuid null,
+  seed_a integer null,
+  seed_b integer null,
+  winner uuid null,
+  status text null default 'scheduled'::text,
+  scheduled_at timestamp with time zone null,
+  created_at timestamp with time zone null default now(),
+  pool text null,
+  court integer null,
+  team_a_id uuid null,
+  team_b_id uuid null,
+  score_a integer null,
+  score_b integer null,
+  constraint matches_pkey primary key (id),
+  constraint matches_slot_a_fkey foreign KEY (slot_a) references players (id),
+  constraint matches_slot_b_fkey foreign KEY (slot_b) references players (id),
+  constraint matches_team_a_id_fkey foreign KEY (team_a_id) references teams (id) on delete set null,
+  constraint matches_team_b_id_fkey foreign KEY (team_b_id) references teams (id) on delete set null,
+  constraint matches_tournament_id_fkey foreign KEY (tournament_id) references tournaments (id) on delete CASCADE,
+  constraint matches_winner_fkey foreign KEY (winner) references players (id)
+) TABLESPACE pg_default;
 
-4. **Player Profiles & Analytics**
-   - Current: Basic player info (name, email, DUPR)
-   - Future: Match history, win/loss records, ranking trends
+create index IF not exists idx_matches_pool on public.matches using btree (pool) TABLESPACE pg_default;
 
-5. **Authentication / Authorization**
-   - Current: Open access (anyone can create tournaments, submit scores)
-   - Future: Supabase Auth, role-based access (admin, referee, player)
+create index IF not exists idx_matches_team_a_id on public.matches using btree (team_a_id) TABLESPACE pg_default;
 
-6. **Score History / Audit Log**
-   - Current: Only latest score stored
-   - Future: View all score submissions, undo functionality
+create index IF not exists idx_matches_team_b_id on public.matches using btree (team_b_id) TABLESPACE pg_default;
 
-7. **Match Scheduling**
-   - Current: All matches scheduled immediately
-   - Future: Court assignments, time slots, notifications
+### players table
 
-8. **Tournament Types**
-   - Current: Single-elimination only
-   - Future: Round-robin, Swiss system, pool play
+create table public.players (
+  id uuid not null default gen_random_uuid (),
+  name text not null,
+  email text null,
+  dupr numeric null,
+  created_at timestamp with time zone null default now(),
+  constraint players_pkey primary key (id)
+) TABLESPACE pg_default;
 
-9. **Mobile Optimization**
-   - Current: Works on mobile but not optimized
-   - Future: Mobile-first design, native app
+### registrations table
+create table public.registrations (
+  id uuid not null default gen_random_uuid (),
+  tournament_id uuid null,
+  player_id uuid null,
+  seed integer null,
+  created_at timestamp with time zone null default now(),
+  constraint registrations_pkey primary key (id),
+  constraint registrations_player_id_fkey foreign KEY (player_id) references players (id) on delete CASCADE,
+  constraint registrations_tournament_id_fkey foreign KEY (tournament_id) references tournaments (id) on delete CASCADE
+) TABLESPACE pg_default;
 
-10. **Export Functionality**
-    - Current: No export
-    - Future: Export brackets to PDF, CSV, share links
+### teams table
+create table public.teams (
+  id uuid not null default gen_random_uuid (),
+  tournament_id uuid not null,
+  team_name text not null,
+  player1_id uuid not null,
+  player2_id uuid null,
+  created_at timestamp with time zone null default now(),
+  constraint teams_pkey primary key (id),
+  constraint teams_player1_id_fkey foreign KEY (player1_id) references players (id) on delete CASCADE,
+  constraint teams_player2_id_fkey foreign KEY (player2_id) references players (id) on delete CASCADE,
+  constraint teams_tournament_id_fkey foreign KEY (tournament_id) references tournaments (id) on delete CASCADE
+) TABLESPACE pg_default;
 
-### Known Limitations / Tech Debt
+create index IF not exists idx_teams_tournament_id on public.teams using btree (tournament_id) TABLESPACE pg_default;
 
-1. **Error Handling**
-   - Could be more robust (currently basic alerts)
-   - Should add toast notifications
-
-2. **Loading States**
-   - Basic loading indicators
-   - Could add skeletons, better UX
-
-3. **Validation**
-   - Score validation is simple (best of 3)
-   - Could enforce pickleball rules (11 points, win by 2)
-
-4. **Database Constraints**
-   - No unique constraints on player emails
-   - No prevention of duplicate registrations
-
-5. **Real-time Performance**
-   - Works fine for small tournaments
-   - May need optimization for 100+ player tournaments
+### tournaments table
+create table public.tournaments (
+  id uuid not null default gen_random_uuid (),
+  name text not null,
+  date timestamp with time zone null,
+  format text not null default 'single-elim'::text,
+  created_at timestamp with time zone null default now(),
+  location text null,
+  tournament_type text null default 'singles'::text,
+  constraint tournaments_pkey primary key (id)
+) TABLESPACE pg_default;
 
 ---
-
-## FILE STRUCTURE
-
-```
-tournament-scheduler/
-├── src/
-│   ├── app/
-│   │   ├── page.tsx                           # Tournament list (home)
-│   │   ├── api/
-│   │   │   ├── tournaments/
-│   │   │   │   ├── route.ts                   # GET/POST tournaments
-│   │   │   │   └── [id]/
-│   │   │   │       ├── route.ts               # GET tournament detail
-│   │   │   │       ├── register/route.ts      # POST register player
-│   │   │   │       └── generate/route.ts      # POST generate bracket
-│   │   │   └── matches/
-│   │   │       └── [id]/
-│   │   │           ├── route.ts               # GET match detail
-│   │   │           └── score/route.ts         # POST submit score
-│   │   ├── tournaments/
-│   │   │   └── [id]/
-│   │   │       └── page.tsx                   # Tournament detail + bracket
-│   │   └── matches/
-│   │       └── [id]/
-│   │           └── page.tsx                   # Match detail / referee page
-│   ├── components/
-│   │   ├── CreateTournamentModal.tsx          # Create tournament form
-│   │   └── RegisterPlayerModal.tsx            # Register player form
-│   ├── types/
-│   │   └── db.ts                              # TypeScript types
-│   └── lib/
-│       └── supabase.ts                        # Supabase client instance
-```
-
----
-
-## NEXT STEPS IF CONTINUING DEVELOPMENT
-
-1. Add authentication (Supabase Auth)
-2. Add role-based permissions (tournament organizer, referee, player)
-3. Improve error handling and validation
-4. Add score history / audit trail
-5. Implement undo score functionality
-6. Add court assignments and scheduling
-7. Mobile UI optimization
-8. Add tournament templates (best of 5, different formats)
-9. Export brackets to PDF
-10. Email notifications for match assignments
