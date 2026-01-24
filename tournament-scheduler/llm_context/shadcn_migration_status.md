@@ -18,3 +18,11 @@
   - Replaced error display with Alert component (variant: destructive)
   - DUPR helper text now uses text-muted-foreground class
   - All functionality preserved (player registration, validation, etc.)
+
+### Phase 4 - done
+- Migrated Home page (src/app/page.tsx) to use shadcn components:
+  - Replaced create tournament button with Button component
+  - Replaced tournament cards with Card/CardHeader/CardTitle/CardContent components
+  - Updated text colors to use text-muted-foreground for consistency
+  - Added hover:border-primary and cursor-pointer to cards for interactivity
+  - All functionality preserved (tournament list, modal trigger, navigation)
