@@ -2,6 +2,11 @@
 
 import { useState } from 'react'
 import { Match, Team, Player } from '@/types/db'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 
 type TeamWithPlayers = Team & {
   player1: Player
@@ -181,82 +186,61 @@ export default function TournamentFixtures({
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b">
-        <div className="flex justify-center gap-2 px-6 py-3">
-          {(['fixtures', 'standings', 'table', 'stats', 'details'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setSelectedTab(tab)}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                selectedTab === tab
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+      <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as any)} className="bg-white">
+        <div className="border-b">
+          <div className="flex justify-center px-6 py-3">
+            <TabsList>
+              <TabsTrigger value="fixtures">Fixtures</TabsTrigger>
+              <TabsTrigger value="standings">Standings</TabsTrigger>
+              <TabsTrigger value="table">Table</TabsTrigger>
+              <TabsTrigger value="stats">Stats</TabsTrigger>
+              <TabsTrigger value="details">Details</TabsTrigger>
+            </TabsList>
+          </div>
         </div>
-      </div>
 
-      {selectedTab === 'fixtures' && (
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <TabsContent value="fixtures">
+          <div className="max-w-7xl mx-auto px-6 py-6">
           {/* Format Selection */}
           <div className="flex justify-center gap-4 mb-6">
-            <button
+            <Button
+              variant={formatView === 'round-robin' ? 'default' : 'outline'}
               onClick={() => setFormatView('round-robin')}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                formatView === 'round-robin'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
             >
               Round Robin
-            </button>
-            <button
+            </Button>
+            <Button
+              variant={formatView === 'knockouts' ? 'default' : 'outline'}
               onClick={() => setFormatView('knockouts')}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                formatView === 'knockouts'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
             >
               Knockouts
-            </button>
+            </Button>
           </div>
 
           {/* Round Navigation */}
           <div className="flex justify-center gap-2 mb-6 flex-wrap">
             {rounds.map((round) => (
-              <button
+              <Button
                 key={round}
+                variant={selectedRound === round ? 'default' : 'outline'}
+                size="sm"
                 onClick={() => setSelectedRound(round)}
-                className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                  selectedRound === round
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
               >
                 Round {round}
-              </button>
+              </Button>
             ))}
           </div>
 
           {/* View Mode Selection */}
           <div className="flex justify-center gap-4 mb-6">
             {(['court-wise', 'pool-wise', 'status-wise'] as const).map((mode) => (
-              <button
+              <Button
                 key={mode}
+                variant={viewMode === mode ? 'default' : 'secondary'}
                 onClick={() => setViewMode(mode)}
-                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === mode
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                }`}
               >
                 {mode.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-')}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -264,17 +248,15 @@ export default function TournamentFixtures({
           {viewMode === 'pool-wise' && pools.length > 0 && (
             <div className="flex justify-center gap-2 mb-6">
               {pools.map((pool) => (
-                <button
+                <Button
                   key={pool}
+                  variant={selectedPool === pool ? 'default' : 'outline'}
+                  size="icon"
                   onClick={() => setSelectedPool(pool)}
-                  className={`w-10 h-10 rounded-lg font-medium transition-colors ${
-                    selectedPool === pool
-                      ? 'bg-gray-800 text-white'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                  }`}
+                  className={selectedPool === pool ? 'bg-gray-800 hover:bg-gray-900' : ''}
                 >
                   {pool}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -282,230 +264,245 @@ export default function TournamentFixtures({
           {/* Match Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredMatches.map((match) => (
-              <div
-                key={match.id}
-                className="bg-green-50 border border-green-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="text-xs text-gray-600 mb-3">Match ID: {match.id.slice(0, 8)}</div>
+              <Card key={match.id} className="bg-green-50 border-green-200 hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="text-xs text-muted-foreground mb-3">Match ID: {match.id.slice(0, 8)}</div>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  {/* Team A */}
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1">
-                      Team ID: {match.team_a_id?.slice(0, 8) || 'N/A'}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    {/* Team A */}
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Team ID: {match.team_a_id?.slice(0, 8) || 'N/A'}
+                      </div>
+                      {getTeamDisplay(match.team_a)}
                     </div>
-                    {getTeamDisplay(match.team_a)}
-                  </div>
 
-                  {/* Team B */}
-                  <div>
-                    <div className="text-xs text-gray-500 mb-1">
-                      Team ID: {match.team_b_id?.slice(0, 8) || 'N/A'}
+                    {/* Team B */}
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Team ID: {match.team_b_id?.slice(0, 8) || 'N/A'}
+                      </div>
+                      {getTeamDisplay(match.team_b)}
                     </div>
-                    {getTeamDisplay(match.team_b)}
                   </div>
-                </div>
 
-                {/* Score */}
-                <div className="flex items-center justify-center gap-4 mb-4">
-                  <div className="text-2xl font-bold">{match.score_a ?? '-'}</div>
-                  <div className="text-gray-400">vs</div>
-                  <div className="text-2xl font-bold">{match.score_b ?? '-'}</div>
-                </div>
+                  {/* Score */}
+                  <div className="flex items-center justify-center gap-4 mb-4">
+                    <div className="text-2xl font-bold">{match.score_a ?? '-'}</div>
+                    <div className="text-muted-foreground">vs</div>
+                    <div className="text-2xl font-bold">{match.score_b ?? '-'}</div>
+                  </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="text-blue-600">
-                    {match.pool && `Pool: ${match.pool}`}
-                    {match.court && ` | Court ${match.court}`}
+                  {/* Footer */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="text-primary">
+                      {match.pool && `Pool: ${match.pool}`}
+                      {match.court && ` | Court ${match.court}`}
+                    </div>
+                    <Badge
+                      variant={
+                        match.status === 'completed' ? 'default' :
+                        match.status === 'live' ? 'destructive' :
+                        'secondary'
+                      }
+                      className={match.status === 'completed' ? 'bg-green-600' : ''}
+                    >
+                      {match.status === 'completed' ? 'Completed' : match.status}
+                    </Badge>
                   </div>
-                  <div className={`px-2 py-1 rounded ${
-                    match.status === 'completed'
-                      ? 'bg-green-200 text-green-800'
-                      : match.status === 'live'
-                      ? 'bg-yellow-200 text-yellow-800'
-                      : 'bg-gray-200 text-gray-800'
-                  }`}>
-                    {match.status === 'completed' ? 'Completed' : match.status}
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
 
           {filteredMatches.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
               No matches found for the selected filters.
             </div>
           )}
-        </div>
-      )}
+          </div>
+        </TabsContent>
 
-      {selectedTab === 'standings' && (
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Pool Standings</h2>
+        <TabsContent value="standings">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <h2 className="text-2xl font-bold mb-6 text-center">Pool Standings</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {pools.map(pool => (
-              <div key={pool} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="bg-blue-600 text-white px-4 py-3">
-                  <h3 className="text-lg font-semibold">Pool {pool}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {pools.map(pool => (
+                <Card key={pool} className="overflow-hidden">
+                  <div className="bg-primary text-primary-foreground px-4 py-3">
+                    <h3 className="text-lg font-semibold">Pool {pool}</h3>
+                  </div>
+
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-left">Rank</TableHead>
+                            <TableHead className="text-left">Team</TableHead>
+                            <TableHead className="text-center">P</TableHead>
+                            <TableHead className="text-center">W</TableHead>
+                            <TableHead className="text-center">L</TableHead>
+                            <TableHead className="text-center">PF</TableHead>
+                            <TableHead className="text-center">PA</TableHead>
+                            <TableHead className="text-center">Diff</TableHead>
+                            <TableHead className="text-center">Pts</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {standingsByPool[pool]?.length > 0 ? (
+                            standingsByPool[pool].map((standing, index) => (
+                              <TableRow key={standing.teamId} className={index === 0 ? 'bg-green-50' : ''}>
+                                <TableCell className="font-medium">{index + 1}</TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{getTeamName(standing.team)}</div>
+                                  {standing.team?.team_name && (
+                                    <div className="text-xs text-muted-foreground">{standing.team.team_name}</div>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">{standing.played}</TableCell>
+                                <TableCell className="text-center text-green-600 font-medium">{standing.won}</TableCell>
+                                <TableCell className="text-center text-red-600 font-medium">{standing.lost}</TableCell>
+                                <TableCell className="text-center">{standing.pointsFor}</TableCell>
+                                <TableCell className="text-center">{standing.pointsAgainst}</TableCell>
+                                <TableCell className={`text-center font-medium ${
+                                  standing.pointsDiff > 0 ? 'text-green-600' : standing.pointsDiff < 0 ? 'text-red-600' : ''
+                                }`}>
+                                  {standing.pointsDiff > 0 ? '+' : ''}{standing.pointsDiff}
+                                </TableCell>
+                                <TableCell className="text-center font-bold text-primary">{standing.points}</TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={9} className="text-center text-muted-foreground h-24">
+                                No completed matches in this pool yet
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="mt-8 bg-blue-50 border-blue-200">
+              <CardContent className="pt-6">
+                <h4 className="font-semibold text-blue-900 mb-2">Legend:</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-blue-800">
+                  <div><span className="font-semibold">P:</span> Played</div>
+                  <div><span className="font-semibold">W:</span> Won</div>
+                  <div><span className="font-semibold">L:</span> Lost</div>
+                  <div><span className="font-semibold">PF:</span> Points For</div>
+                  <div><span className="font-semibold">PA:</span> Points Against</div>
+                  <div><span className="font-semibold">Diff:</span> Point Difference</div>
+                  <div><span className="font-semibold">Pts:</span> League Points (2 for win)</div>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
+        <TabsContent value="table">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <h2 className="text-2xl font-bold mb-6 text-center">Overall Standings</h2>
+
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">P</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">W</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">L</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">PF</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">PA</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Diff</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Pts</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {standingsByPool[pool]?.length > 0 ? (
-                        standingsByPool[pool].map((standing, index) => (
-                          <tr key={standing.teamId} className={index === 0 ? 'bg-green-50' : ''}>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{index + 1}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-left">Rank</TableHead>
+                        <TableHead className="text-left">Team</TableHead>
+                        <TableHead className="text-center">Pool</TableHead>
+                        <TableHead className="text-center">Played</TableHead>
+                        <TableHead className="text-center">Won</TableHead>
+                        <TableHead className="text-center">Lost</TableHead>
+                        <TableHead className="text-center">Points For</TableHead>
+                        <TableHead className="text-center">Points Against</TableHead>
+                        <TableHead className="text-center">Difference</TableHead>
+                        <TableHead className="text-center">Points</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(() => {
+                        const allStandings = pools.flatMap(pool =>
+                          (standingsByPool[pool] || []).map(s => ({ ...s, pool }))
+                        ).sort((a, b) => {
+                          if (b.points !== a.points) return b.points - a.points
+                          if (b.pointsDiff !== a.pointsDiff) return b.pointsDiff - a.pointsDiff
+                          return b.pointsFor - a.pointsFor
+                        })
+
+                        return allStandings.length > 0 ? allStandings.map((standing, index) => (
+                          <TableRow key={standing.teamId} className={index < 4 ? 'bg-yellow-50' : ''}>
+                            <TableCell className="font-medium">
+                              {index + 1}
+                              {index < 4 && <span className="ml-2 text-xs text-yellow-600">★</span>}
+                            </TableCell>
+                            <TableCell>
                               <div className="font-medium">{getTeamName(standing.team)}</div>
                               {standing.team?.team_name && (
-                                <div className="text-xs text-gray-500">{standing.team.team_name}</div>
+                                <div className="text-xs text-muted-foreground">{standing.team.team_name}</div>
                               )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-center text-gray-900">{standing.played}</td>
-                            <td className="px-4 py-3 text-sm text-center text-green-600 font-medium">{standing.won}</td>
-                            <td className="px-4 py-3 text-sm text-center text-red-600 font-medium">{standing.lost}</td>
-                            <td className="px-4 py-3 text-sm text-center text-gray-900">{standing.pointsFor}</td>
-                            <td className="px-4 py-3 text-sm text-center text-gray-900">{standing.pointsAgainst}</td>
-                            <td className={`px-4 py-3 text-sm text-center font-medium ${
-                              standing.pointsDiff > 0 ? 'text-green-600' : standing.pointsDiff < 0 ? 'text-red-600' : 'text-gray-900'
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="secondary" className="w-8 h-8 rounded-full">
+                                {standing.pool}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">{standing.played}</TableCell>
+                            <TableCell className="text-center text-green-600 font-medium">{standing.won}</TableCell>
+                            <TableCell className="text-center text-red-600 font-medium">{standing.lost}</TableCell>
+                            <TableCell className="text-center">{standing.pointsFor}</TableCell>
+                            <TableCell className="text-center">{standing.pointsAgainst}</TableCell>
+                            <TableCell className={`text-center font-medium ${
+                              standing.pointsDiff > 0 ? 'text-green-600' : standing.pointsDiff < 0 ? 'text-red-600' : ''
                             }`}>
                               {standing.pointsDiff > 0 ? '+' : ''}{standing.pointsDiff}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-center font-bold text-blue-600">{standing.points}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
-                            No completed matches in this pool yet
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                            </TableCell>
+                            <TableCell className="text-center font-bold text-primary">{standing.points}</TableCell>
+                          </TableRow>
+                        )) : (
+                          <TableRow>
+                            <TableCell colSpan={10} className="text-center text-muted-foreground h-24">
+                              No completed matches yet
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })()}
+                    </TableBody>
+                  </Table>
                 </div>
-              </div>
-            ))}
+              </CardContent>
+            </Card>
+
+            <Card className="mt-6 bg-yellow-50 border-yellow-200">
+              <CardContent className="pt-6">
+                <p className="text-sm text-yellow-800">
+                  <span className="font-semibold">★ Top 4 teams</span> will advance to the knockout stage
+                </p>
+              </CardContent>
+            </Card>
           </div>
+        </TabsContent>
 
-          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-semibold text-blue-900 mb-2">Legend:</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-blue-800">
-              <div><span className="font-semibold">P:</span> Played</div>
-              <div><span className="font-semibold">W:</span> Won</div>
-              <div><span className="font-semibold">L:</span> Lost</div>
-              <div><span className="font-semibold">PF:</span> Points For</div>
-              <div><span className="font-semibold">PA:</span> Points Against</div>
-              <div><span className="font-semibold">Diff:</span> Point Difference</div>
-              <div><span className="font-semibold">Pts:</span> League Points (2 for win)</div>
-            </div>
+        <TabsContent value="stats">
+          <div className="text-center py-12 text-muted-foreground">
+            Stats view coming soon...
           </div>
-        </div>
-      )}
+        </TabsContent>
 
-      {selectedTab === 'table' && (
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Overall Standings</h2>
-
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Pool</th>
-                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Played</th>
-                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Won</th>
-                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Lost</th>
-                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Points For</th>
-                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Points Against</th>
-                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Difference</th>
-                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {(() => {
-                    const allStandings = pools.flatMap(pool =>
-                      (standingsByPool[pool] || []).map(s => ({ ...s, pool }))
-                    ).sort((a, b) => {
-                      if (b.points !== a.points) return b.points - a.points
-                      if (b.pointsDiff !== a.pointsDiff) return b.pointsDiff - a.pointsDiff
-                      return b.pointsFor - a.pointsFor
-                    })
-
-                    return allStandings.length > 0 ? allStandings.map((standing, index) => (
-                      <tr key={standing.teamId} className={index < 4 ? 'bg-yellow-50' : ''}>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {index + 1}
-                          {index < 4 && <span className="ml-2 text-xs text-yellow-600">★</span>}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <div className="font-medium text-gray-900">{getTeamName(standing.team)}</div>
-                          {standing.team?.team_name && (
-                            <div className="text-xs text-gray-500">{standing.team.team_name}</div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-center">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-800 font-semibold">
-                            {standing.pool}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-center text-gray-900">{standing.played}</td>
-                        <td className="px-6 py-4 text-sm text-center text-green-600 font-medium">{standing.won}</td>
-                        <td className="px-6 py-4 text-sm text-center text-red-600 font-medium">{standing.lost}</td>
-                        <td className="px-6 py-4 text-sm text-center text-gray-900">{standing.pointsFor}</td>
-                        <td className="px-6 py-4 text-sm text-center text-gray-900">{standing.pointsAgainst}</td>
-                        <td className={`px-6 py-4 text-sm text-center font-medium ${
-                          standing.pointsDiff > 0 ? 'text-green-600' : standing.pointsDiff < 0 ? 'text-red-600' : 'text-gray-900'
-                        }`}>
-                          {standing.pointsDiff > 0 ? '+' : ''}{standing.pointsDiff}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-center font-bold text-blue-600">{standing.points}</td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
-                          No completed matches yet
-                        </td>
-                      </tr>
-                    )
-                  })()}
-                </tbody>
-              </table>
-            </div>
+        <TabsContent value="details">
+          <div className="text-center py-12 text-muted-foreground">
+            Details view coming soon...
           </div>
-
-          <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800">
-              <span className="font-semibold">★ Top 4 teams</span> will advance to the knockout stage
-            </p>
-          </div>
-        </div>
-      )}
-
-      {(selectedTab === 'stats' || selectedTab === 'details') && (
-        <div className="text-center py-12 text-gray-500">
-          {selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1)} view coming soon...
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

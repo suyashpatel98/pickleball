@@ -40,3 +40,22 @@
   - Updated text colors to use text-muted-foreground for secondary text
   - Winner badge uses custom green background (bg-green-600)
   - All functionality preserved (score entry, validation, submission, navigation)
+
+### Phase 6 - done
+- Migrated TournamentFixtures component (src/components/TournamentFixtures.tsx) to use shadcn components:
+  - Replaced main navigation tabs with Tabs/TabsList/TabsTrigger/TabsContent components
+  - Replaced all toggle buttons with Button component:
+    - Format selection buttons (variant: default/outline)
+    - Round navigation buttons (variant: default/outline, size: sm)
+    - View mode buttons (variant: default/secondary)
+    - Pool selection buttons (variant: default/outline, size: icon)
+  - Replaced match cards with Card/CardContent components
+  - Replaced match status badges with Badge component (custom bg-green-600 for completed)
+  - Replaced all tables with Table/TableHeader/TableBody/TableRow/TableHead/TableCell components:
+    - Pool standings tables
+    - Overall standings table
+  - Replaced pool header cards with Card components (bg-primary for headers)
+  - Replaced legend and info cards with Card/CardContent components
+  - Updated text colors to use text-muted-foreground and text-primary
+  - Pool badge in overall standings uses Badge with variant="secondary"
+  - All functionality preserved (tab navigation, filtering, sorting, standings calculations)
