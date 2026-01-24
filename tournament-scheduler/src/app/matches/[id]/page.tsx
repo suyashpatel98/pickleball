@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Match, Player } from '@/types/db'
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 type MatchWithPlayers = {
   match: Match
@@ -115,7 +119,7 @@ export default function MatchDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Loading match...</p>
+        <p className="text-muted-foreground">Loading match...</p>
       </div>
     )
   }
@@ -123,7 +127,7 @@ export default function MatchDetailPage() {
   if (!data) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Match not found</p>
+        <p className="text-muted-foreground">Match not found</p>
       </div>
     )
   }
@@ -137,7 +141,7 @@ export default function MatchDetailPage() {
         <div className="max-w-2xl mx-auto px-4 py-8">
           <Link
             href={`/tournaments/${match.tournament_id}`}
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4"
+            className="inline-flex items-center text-primary hover:underline mb-4"
           >
             <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -145,37 +149,43 @@ export default function MatchDetailPage() {
             Back to Tournament
           </Link>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Match Complete</h1>
+          <Card>
+            <CardContent className="pt-6">
+              <h1 className="text-2xl font-bold mb-6">Match Complete</h1>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                  <p className="text-lg font-medium">{player_a?.name || 'BYE'}</p>
-                  {match.seed_a && <p className="text-sm text-gray-500">Seed #{match.seed_a}</p>}
-                </div>
-                {match.winner === match.slot_a && (
-                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                    Winner
-                  </span>
-                )}
+              <div className="space-y-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-lg font-medium">{player_a?.name || 'BYE'}</p>
+                        {match.seed_a && <p className="text-sm text-muted-foreground">Seed #{match.seed_a}</p>}
+                      </div>
+                      {match.winner === match.slot_a && (
+                        <Badge className="bg-green-600">Winner</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="text-center text-muted-foreground font-medium">vs</div>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-lg font-medium">{player_b?.name || 'BYE'}</p>
+                        {match.seed_b && <p className="text-sm text-muted-foreground">Seed #{match.seed_b}</p>}
+                      </div>
+                      {match.winner === match.slot_b && (
+                        <Badge className="bg-green-600">Winner</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-
-              <div className="text-center text-gray-400 font-medium">vs</div>
-
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                  <p className="text-lg font-medium">{player_b?.name || 'BYE'}</p>
-                  {match.seed_b && <p className="text-sm text-gray-500">Seed #{match.seed_b}</p>}
-                </div>
-                {match.winner === match.slot_b && (
-                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                    Winner
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )
@@ -186,7 +196,7 @@ export default function MatchDetailPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <Link
           href={`/tournaments/${match.tournament_id}`}
-          className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4"
+          className="inline-flex items-center text-primary hover:underline mb-4"
         >
           <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -194,110 +204,113 @@ export default function MatchDetailPage() {
           Back to Tournament
         </Link>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Round {match.round} Match</h1>
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                match.status === 'live'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-gray-100 text-gray-800'
-              }`}
-            >
-              {match.status}
-            </span>
-          </div>
-
-          {/* Players */}
-          <div className="mb-8 space-y-4">
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <p className="text-lg font-medium text-gray-900">{player_a?.name || 'BYE'}</p>
-              {player_a?.dupr && (
-                <p className="text-sm text-gray-600">DUPR: {player_a.dupr}</p>
-              )}
-              {match.seed_a && <p className="text-sm text-gray-500">Seed #{match.seed_a}</p>}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold">Round {match.round} Match</h1>
+              <Badge variant={match.status === 'live' ? 'default' : 'secondary'}>
+                {match.status}
+              </Badge>
             </div>
 
-            <div className="text-center text-gray-400 font-medium">vs</div>
-
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <p className="text-lg font-medium text-gray-900">{player_b?.name || 'BYE'}</p>
-              {player_b?.dupr && (
-                <p className="text-sm text-gray-600">DUPR: {player_b.dupr}</p>
-              )}
-              {match.seed_b && <p className="text-sm text-gray-500">Seed #{match.seed_b}</p>}
-            </div>
-          </div>
-
-          {/* Score Entry */}
-          <div className="border-t border-gray-200 pt-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Enter Score (Best of 3)</h2>
-
-            <div className="space-y-3 mb-4">
-              {games.map((game, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-700 w-16">
-                    Game {index + 1}:
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={game.a}
-                    onChange={(e) => handleScoreChange(index, 'a', e.target.value)}
-                    className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
-                  />
-                  <span className="text-gray-500">-</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={game.b}
-                    onChange={(e) => handleScoreChange(index, 'b', e.target.value)}
-                    className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
-                  />
-                  {games.length > 1 && (
-                    <button
-                      onClick={() => handleRemoveGame(index)}
-                      className="ml-2 text-red-600 hover:text-red-700"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
+            {/* Players */}
+            <div className="mb-8 space-y-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-lg font-medium">{player_a?.name || 'BYE'}</p>
+                  {player_a?.dupr && (
+                    <p className="text-sm text-muted-foreground">DUPR: {player_a.dupr}</p>
                   )}
-                </div>
-              ))}
+                  {match.seed_a && <p className="text-sm text-muted-foreground">Seed #{match.seed_a}</p>}
+                </CardContent>
+              </Card>
+
+              <div className="text-center text-muted-foreground font-medium">vs</div>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-lg font-medium">{player_b?.name || 'BYE'}</p>
+                  {player_b?.dupr && (
+                    <p className="text-sm text-muted-foreground">DUPR: {player_b.dupr}</p>
+                  )}
+                  {match.seed_b && <p className="text-sm text-muted-foreground">Seed #{match.seed_b}</p>}
+                </CardContent>
+              </Card>
             </div>
 
-            {games.length < 3 && (
-              <button
-                onClick={handleAddGame}
-                className="mb-4 text-blue-600 hover:text-blue-700 text-sm font-medium"
-              >
-                + Add Game
-              </button>
-            )}
+            {/* Score Entry */}
+            <div className="border-t pt-6">
+              <h2 className="text-lg font-semibold mb-4">Enter Score (Best of 3)</h2>
 
-            <button
-              onClick={handleSubmitScore}
-              disabled={submitting}
-              className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 font-medium"
-            >
-              {submitting ? 'Submitting...' : 'Submit Score'}
-            </button>
-          </div>
-        </div>
+              <div className="space-y-3 mb-4">
+                {games.map((game, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <span className="text-sm font-medium w-16">
+                      Game {index + 1}:
+                    </span>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={game.a}
+                      onChange={(e) => handleScoreChange(index, 'a', e.target.value)}
+                      className="w-20"
+                      placeholder="0"
+                    />
+                    <span className="text-muted-foreground">-</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={game.b}
+                      onChange={(e) => handleScoreChange(index, 'b', e.target.value)}
+                      className="w-20"
+                      placeholder="0"
+                    />
+                    {games.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveGame(index)}
+                        className="ml-2 text-destructive hover:text-destructive"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {games.length < 3 && (
+                <Button
+                  variant="link"
+                  onClick={handleAddGame}
+                  className="mb-4 text-sm"
+                >
+                  + Add Game
+                </Button>
+              )}
+
+              <Button
+                onClick={handleSubmitScore}
+                disabled={submitting}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                {submitting ? 'Submitting...' : 'Submit Score'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
