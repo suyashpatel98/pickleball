@@ -31,6 +31,110 @@ This document outlines the implementation roadmap for the tournament scheduling 
 
 ---
 
+## 🚧 Phase 0.5: Authentication & Multi-Tenant SaaS
+
+**Priority:** CRITICAL - Business Foundation
+
+**Goal:** Transform single-use tool into monetizable multi-tenant SaaS platform
+
+### Features
+
+#### 0.5.1 Authentication System
+- NextAuth.js integration for directors
+- Email/password authentication
+- OAuth providers (Google, GitHub)
+- Email verification
+- Password reset flow
+- Session management
+
+#### 0.5.2 Multi-Tenancy Foundation
+- Add `created_by` (user_id) to tournaments table
+- Add `user_id` to track ownership
+- Supabase Row-Level Security (RLS) policies:
+  - Directors can only see/edit their tournaments
+  - Public can view published tournaments
+  - Players can access via token
+- Isolate data per organization/director
+
+#### 0.5.3 Director Dashboard
+- `/dashboard` route showing "My Tournaments"
+- List all tournaments created by logged-in user
+- Quick actions (Manage, View Public, Share Links)
+- Tournament status indicators (Live, Scheduled, Archived)
+- "Create New Tournament" button
+- Plan/subscription display
+
+#### 0.5.4 Public Discovery
+- `/discover` page for browsing public tournaments
+- Search by name, location, date
+- Filter by status (Live, Upcoming, Completed)
+- Click to view public tournament page
+- SEO-friendly for Google discovery
+
+#### 0.5.5 Token-Based Access
+- **Player tokens:**
+  - Generate UUID token on registration
+  - Store in registrations table
+  - URL format: `/tournaments/{id}/players/{token}`
+  - No expiration (can access historical data)
+- **Court URLs:**
+  - Already public (no change needed)
+  - Optional: Add 4-digit PIN protection
+
+#### 0.5.6 Access Control Updates
+- Protect `/tournaments/{id}/manage` route (auth required)
+- Check user owns tournament before allowing access
+- Keep public routes open (no auth)
+- Graceful handling of unauthorized access
+- Login redirect with return URL
+
+#### 0.5.7 Onboarding Flow
+- Welcome page after signup
+- Quick tutorial (create tournament → add courts → register players)
+- Sample tournament template (optional)
+- Help documentation links
+
+### Technical Pointers
+- Use NextAuth.js with Supabase adapter
+- Store sessions in database
+- RLS policies in Supabase:
+  ```sql
+  CREATE POLICY "users_own_tournaments" ON tournaments
+    FOR ALL USING (auth.uid() = created_by);
+
+  CREATE POLICY "public_can_view" ON tournaments
+    FOR SELECT USING (is_published = true);
+  ```
+- Middleware to protect routes
+- Token validation for player URLs
+- Add `is_published` boolean to tournaments table
+
+### Success Criteria
+- Directors can sign up and create tournaments
+- Each director only sees their tournaments
+- Public can discover and view tournaments
+- Players can access personalized views via token
+- No data leakage between directors
+- Smooth login/logout experience
+
+### Database Changes
+```sql
+-- Add to tournaments table
+ALTER TABLE tournaments
+  ADD COLUMN created_by UUID REFERENCES auth.users(id),
+  ADD COLUMN is_published BOOLEAN DEFAULT true;
+
+-- Add to registrations table (for player tokens)
+ALTER TABLE registrations
+  ADD COLUMN player_token UUID DEFAULT gen_random_uuid();
+
+-- Create indexes
+CREATE INDEX idx_tournaments_created_by ON tournaments(created_by);
+CREATE INDEX idx_registrations_player_token ON registrations(player_token);
+```
+
+---
+
 ## 🚧 Phase 1: Real-time Updates & Live Experience
 
 **Priority:** High - Foundation for better UX across all actors
@@ -338,28 +442,25 @@ This document outlines the implementation roadmap for the tournament scheduling 
 
 ## 🔮 Future Considerations (Beyond Phase 6)
 
-### Advanced Features
+### Business Features
+- Team/organization accounts (multiple directors per org)
+- Payment integration (Stripe) for subscriptions
+- Custom domain support for Enterprise
+- White-label branding options
+- API access for integrations
+
+### Advanced Tournament Features
 - Multi-day tournament support with pause/resume
-- Concurrent tournament management
-- Team/organization accounts
-- Payment integration for entry fees
-- Live streaming integration
-- Mobile native apps (iOS/Android)
-- Tournament discovery/listing page
-- Public tournament calendar
-- Social sharing features
-- Player profiles and history
-- Ranking system integration
-- Match scheduling AI (optimize for fairness/efficiency)
+- Player profiles and tournament history
+- Ranking system integration (DUPR)
+- Match scheduling optimization algorithms
 
 ### Technical Improvements
-- Horizontal scaling for large tournaments
-- Database optimization for 100+ concurrent matches
+- Horizontal scaling for large tournaments (100+ courts)
+- Database optimization and query caching
 - CDN for static assets
-- Rate limiting and DDoS protection
-- Automated backups
-- Monitoring and alerting
-- A/B testing framework
+- Enhanced monitoring and alerting
+- Automated backups and disaster recovery
 
 ---
 
@@ -367,56 +468,86 @@ This document outlines the implementation roadmap for the tournament scheduling 
 
 ### Overall Progress
 
-| Phase | Status | Completion |
-|-------|--------|------------|
-| Phase 0: Core MVP | ✅ Complete | 100% |
-| Phase 1: Real-time Updates | 🔲 Not Started | 0% |
-| Phase 2: Player Experience | 🔲 Not Started | 0% |
-| Phase 3: Notifications | 🔲 Not Started | 0% |
-| Phase 4: Referee Enhancements | 🔲 Not Started | 0% |
-| Phase 5: Director Tools | 🔲 Not Started | 0% |
-| Phase 6: Reporting | 🔲 Not Started | 0% |
+| Phase | Name | Status | Completion |
+|-------|------|--------|------------|
+| Phase 0 | Core MVP | ✅ Complete | 100% |
+| **Phase 0.5** | **Auth & Multi-Tenancy** | 🔲 Not Started | 0% |
+| Phase 1 | Real-time Updates | 🔲 Not Started | 0% |
+| Phase 2 | Player Experience | 🔲 Not Started | 0% |
+| Phase 3 | Notifications | 🔲 Not Started | 0% |
+| Phase 4 | Referee Enhancements | 🔲 Not Started | 0% |
+| Phase 5 | Director Tools | 🔲 Not Started | 0% |
+| Phase 6 | Reporting | 🔲 Not Started | 0% |
 
 ### Current Phase: Phase 0 Complete ✅
 
-**Next Recommended Phase:** Phase 1 (Real-time Updates)
+**Next Critical Phase:** Phase 0.5 (Authentication & Multi-Tenancy)
 
-**Reasoning:**
-- Real-time updates provide foundation for better UX
-- Benefits all actors (players, directors, referees, spectators)
-- Enables richer features in subsequent phases
-- Relatively straightforward with Supabase Realtime
-- High user impact with moderate technical complexity
+**Why This Must Come First:**
+- **Business Requirement:** Can't sell SaaS without user accounts
+- **Data Isolation:** Must separate director data before scaling
+- **Monetization:** Need to track who owns what to bill correctly
+- **Foundation:** All future phases depend on multi-tenant architecture
+- **Security:** Protect tournament management from unauthorized access
+
+**After Phase 0.5:**
+Then proceed to Phase 1 (Real-time Updates) for UX improvements.
 
 ---
 
 ## 🎯 Priority Recommendations
 
-### High Priority (Next 3-6 months)
+### Immediate (Before Launch)
+**Phase 0.5:** Authentication & Multi-Tenancy
+- **Timeline:** 1-2 weeks
+- **Blocker:** Can't launch SaaS without this
+- **Impact:** Enables business model
+
+### High Priority (First 3 months after launch)
 1. **Phase 1:** Real-time Updates - Foundation for live experience
 2. **Phase 2:** Player Experience - High value for participants
+
+### Medium Priority (Months 4-9)
 3. **Phase 3:** Notifications - Keep users engaged
-
-### Medium Priority (6-12 months)
 4. **Phase 4:** Referee Enhancements - Quality of life improvements
-5. **Phase 5:** Advanced Director Tools - Power user features
 
-### Low Priority (12+ months)
+### Lower Priority (Months 10-18)
+5. **Phase 5:** Advanced Director Tools - Power user features
 6. **Phase 6:** Reporting & Export - Post-tournament value
-7. Future Considerations - Long-term vision
+
+### Long-term (18+ months)
+7. Future Considerations - Enterprise features, scaling, advanced analytics
 
 ---
 
 ## 📝 Notes
 
-- Each phase can be implemented independently
+### Implementation Guidelines
+- **Phase 0.5 is MANDATORY** before any other phases
+- Phases 1-6 can be implemented in order or reprioritized based on user feedback
 - Some features within phases can be parallelized
-- User feedback should guide priority adjustments
+- Each phase should include tests and documentation
 - Technical debt should be addressed between phases
-- Security and performance should be continuous concerns
-- Documentation should be updated with each phase
+- Security and performance are continuous concerns, not phase-specific
+
+### Launch Strategy
+1. Complete Phase 0 (✅ Done)
+2. Complete Phase 0.5 (Auth & Multi-Tenancy)
+3. Soft launch to beta users (free tier)
+4. Gather feedback while building Phase 1
+5. Add paid tiers when real-time is ready
+6. Scale marketing after Phase 2 (player experience)
+
+### Success Metrics by Phase
+- **Phase 0.5:** Directors can create accounts and tournaments are isolated
+- **Phase 1:** 90% of users don't manually refresh during tournament
+- **Phase 2:** 50%+ of players visit their personal view during tournament
+- **Phase 3:** 70%+ email open rate for match notifications
+- **Phase 4:** <5% score correction requests (good enough without edit)
+- **Phase 5:** Directors use manual reassignment <10% of the time (automation works)
+- **Phase 6:** 30%+ of directors export tournament data post-event
 
 ---
 
 **Last Updated:** 2026-02-07
-**Version:** 1.0
+**Version:** 2.0 (Added Phase 0.5 - Multi-Tenant SaaS Foundation)

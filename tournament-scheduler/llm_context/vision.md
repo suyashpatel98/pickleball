@@ -1,18 +1,279 @@
 # Tournament Scheduling App - Complete Vision & UX Guide
 
+## Product Overview
+
+**TournamentPro** is a multi-tenant SaaS platform for running professional pickleball (and other sport) tournaments. Tournament directors pay for the service, while players, referees, and spectators get free access to track and view tournament progress.
+
+### Business Model
+- **Paying Customers:** Tournament directors/organizers
+- **Free Users:** Players, referees, spectators
+- **Revenue Model:** Subscription tiers (Free/Pro/Enterprise)
+
+---
+
 ## Key Actors & Their Roles
 
-### 1. Tournament Director/Organizer
+### 1. Tournament Director/Organizer (PAYING CUSTOMER)
 The person who creates and manages the tournament.
+- **Must have account** to create/manage tournaments
+- **Pays subscription** for platform access
+- **Gets management dashboard** with full control
 
-### 2. Referee/Court Monitor
+### 2. Referee/Court Monitor (FREE ACCESS)
 The person physically present at a court who records match scores.
+- **No account needed** - accesses via court URL
+- **Given access by director** via link or QR code
+- **Single-court focused** workflow
 
-### 3. Player
+### 3. Player (FREE ACCESS)
 Participant in the tournament who wants to track their matches.
+- **No account needed** - accesses via unique link
+- **Receives personalized URL** upon registration
+- **Optional account** to track history across tournaments
 
-### 4. Spectator/Public
+### 4. Spectator/Public (FREE ACCESS)
 Anyone watching or following the tournament progress.
+- **Completely public** - no barriers
+- **Can view any published tournament**
+- **No account needed**
+
+---
+
+## Access Control & User Experience
+
+### Multi-Tier Access Strategy
+
+#### **Tier 1: Public Access (No Authentication)**
+**Who:** Spectators, general public
+**Access:** Any published tournament page
+**URLs:** `/tournaments/{id}`
+**Features:**
+- View fixtures, standings, tables
+- See live scores (when real-time implemented)
+- Click match details
+- Share tournament links
+
+#### **Tier 2: Magic Links (Token-Based Access)**
+**Who:** Players and Referees
+**Access:** Unique URLs with embedded tokens
+**URLs:**
+- Players: `/tournaments/{id}/players/{player-token}`
+- Referees: `/courts/{court-id}`
+
+**Features:**
+- **Security through obscurity** - hard-to-guess tokens
+- **No passwords needed** - low friction
+- **Links work indefinitely** - bookmark and return
+- **Revocable by director** if needed
+
+**Player Example:**
+```
+Email received:
+"You're registered for Battle Under Lights S2!
+Track your matches: https://app.com/tournaments/abc/players/xyz789"
+```
+
+**Referee Example:**
+```
+Director message:
+"You're assigned to Court 1. Access here:
+https://app.com/courts/court-123
+[QR Code]"
+```
+
+#### **Tier 3: Account-Based (Directors & Power Users)**
+**Who:** Tournament directors (required), Players (optional)
+**Access:** Email/password or OAuth (Google, GitHub)
+**URLs:** `/dashboard`, `/tournaments/{id}/manage`
+
+**Directors (Required):**
+- Must create account to create tournaments
+- Get personal dashboard showing all their tournaments
+- Can invite co-organizers (future)
+- Subscription/billing tied to account
+
+**Players (Optional):**
+- Can create account to link multiple tournaments
+- See history across all tournaments participated
+- Manage notification preferences
+- Track statistics over time
+
+---
+
+## User Journey Flows
+
+### Tournament Director Journey
+
+**First Time (New Director):**
+```
+1. Visit homepage
+   ↓
+2. Click "Create Tournament"
+   ↓
+3. Sign up (email/password or OAuth)
+   ↓
+4. Choose plan (Free trial / Pro / Enterprise)
+   ↓
+5. Create first tournament
+   ↓
+6. Access /tournaments/{id}/manage
+   ↓
+7. Share registration link with players
+   ↓
+8. Share court URLs with referees
+```
+
+**Returning Director:**
+```
+1. Login
+   ↓
+2. Dashboard shows "My Tournaments"
+   ↓
+3. Select tournament → Manage view
+   ↓
+4. Monitor progress, advance rounds
+```
+
+### Player Journey
+
+**Registration:**
+```
+1. Receive registration link from director
+   ↓
+2. Fill form (name, email, skill level)
+   ↓
+3. [Optional] Create account
+   ↓
+4. Receive email with personalized link
+```
+
+**During Tournament:**
+```
+1. Click link from email (or bookmark)
+   ↓
+2. See personal view (next match, history, bracket path)
+   ↓
+3. No login needed (token in URL)
+```
+
+**With Account (Optional):**
+```
+1. Login
+   ↓
+2. Dashboard shows all tournaments participated
+   ↓
+3. See statistics, history, upcoming matches
+```
+
+### Referee Journey
+
+**Setup:**
+```
+1. Director creates courts
+   ↓
+2. Director shares court URL or QR code
+   ↓
+3. Referee opens link and bookmarks
+```
+
+**All Day Usage:**
+```
+1. Open bookmarked court URL
+   ↓
+2. Current match auto-loaded
+   ↓
+3. Enter scores, complete match
+   ↓
+4. Next match auto-loads
+   ↓
+5. Repeat (stay on same URL all day)
+```
+
+### Spectator Journey
+
+**Discovery:**
+```
+1. Google search or social media link
+   ↓
+2. Click tournament page
+   ↓
+3. View fixtures, scores, standings
+   ↓
+4. No barriers, no signup
+```
+
+---
+
+## Monetization & Pricing Tiers
+
+### Free Tier (Trial/Hobby)
+**Price:** $0/month
+**Limits:**
+- 1 active tournament at a time
+- Up to 16 players
+- 2 courts maximum
+- Basic features only
+- Community support
+
+**Target:** Individual organizers, small clubs
+
+### Pro Tier (Recommended)
+**Price:** $29/month (or $290/year)
+**Features:**
+- Unlimited concurrent tournaments
+- Unlimited players and courts
+- Real-time updates (Phase 1)
+- Email notifications (Phase 3)
+- Priority support
+- Custom branding
+
+**Target:** Clubs, recreation centers, regular organizers
+
+### Enterprise Tier
+**Price:** $99/month (custom pricing for large orgs)
+**Features:**
+- Everything in Pro
+- Custom domain (tournaments.yourclub.com)
+- White-label option
+- Advanced analytics
+- API access
+- Dedicated support
+- Team accounts
+
+**Target:** Large organizations, tournament series
+
+---
+
+## Multi-Tenant Architecture
+
+### Tournament Ownership
+```
+Organization/Director
+  └── Tournaments
+      ├── Courts
+      ├── Matches
+      ├── Players (registrations)
+      └── Teams
+```
+
+### Data Isolation
+- Directors only see/edit their tournaments
+- Players only see their matches
+- Public can view published tournaments
+- Secure separation via Row-Level Security (RLS)
+
+### URL Structure
+**Director URLs (Private - Auth Required):**
+- `/dashboard` - My tournaments
+- `/tournaments/{id}/manage` - Management view
+
+**Public URLs (No Auth):**
+- `/tournaments/{id}` - Spectator view
+- `/discover` - Browse public tournaments
+
+**Token URLs (Magic Link Access):**
+- `/courts/{court-id}` - Referee view
+- `/tournaments/{id}/players/{token}` - Player view
 
 ---
 
@@ -378,22 +639,57 @@ scheduled → checked_in → live → completed → confirmed
 
 ---
 
-## Key URLs & Routing
+## Smart URL Routing
 
-### ✅ Implemented URLs
+The app automatically detects user intent based on URL structure:
 
-#### Public URLs
-- `/tournaments/{id}` - Public tournament view (spectator)
+### Public URLs (No Auth)
+- `/` - Homepage with role selection
+- `/discover` - Browse public tournaments
+- `/tournaments/{id}` - Spectator view (fixtures, standings)
+- `/matches/{id}` - Match detail (read-only)
 
-#### Actor-Specific URLs
-- `/tournaments/{id}/manage` - Tournament director dashboard
-- `/courts/{court-id}` - Referee court view
-- `/matches/{id}` - Match detail page (read-only)
+### Token-Based URLs (Magic Link)
+- `/courts/{court-id}` - Referee view (auto-loads matches)
+- `/tournaments/{id}/players/{token}` - Player personal view
 
-### 🔮 Future URLs
-- `/` - Tournament list (home)
-- `/tournaments/{id}/bracket` - Full bracket visualization
-- `/tournaments/{id}/players/{player-id}` - Player personal view
+### Authenticated URLs (Login Required)
+- `/dashboard` - Director's tournament list
+- `/tournaments/{id}/manage` - Management dashboard (creators only)
+- `/settings` - Account settings
+
+### Smart Redirects
+- Visiting `/tournaments/{id}/manage` without auth → Login page
+- After login → Return to intended page
+- Invalid token → Friendly error message
+
+---
+
+## Security & Privacy
+
+### Director Data Protection
+- Email verification required
+- Optional 2FA for paid plans
+- API rate limiting
+- Only see own tournaments
+
+### Player Privacy
+- Unique tokens (UUID-based, hard to guess)
+- Tokens scoped to single tournament
+- Director can revoke tokens
+- Optional: Create account to control data
+
+### Referee Access
+- Public court URLs by default
+- Optional: 4-digit PIN for court access
+- Audit log of all score submissions
+- Director can disable court access
+
+### Public Data
+- Published tournaments are public
+- Directors can mark tournament as private
+- Private tournaments don't appear in discovery
+- Direct link still works if shared
 
 ---
 
@@ -451,20 +747,102 @@ scheduled → checked_in → live → completed → confirmed
 
 ---
 
+## Homepage & Discovery
+
+### Landing Page Design
+```
+┌─────────────────────────────────────────────────────┐
+│  🏓 TournamentPro              [Login]  [Sign Up]   │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│    Run Better Tournaments, Delight Your Players     │
+│                                                      │
+│         [Start Free Trial]  ← For Directors         │
+│                                                      │
+├─────────────────────────────────────────────────────┤
+│  What brings you here?                              │
+│                                                      │
+│  🎯 Create a Tournament                             │
+│     → Sign up and get started                       │
+│                                                      │
+│  🔍 Find a Tournament                               │
+│     → Browse or search public tournaments           │
+│                                                      │
+│  📧 I'm a Player                                    │
+│     → Check your email for your personal link       │
+│                                                      │
+│  📱 I'm a Referee                                   │
+│     → Scan the QR code at your court                │
+└─────────────────────────────────────────────────────┘
+```
+
+### Director Dashboard (After Login)
+```
+/dashboard
+
+┌─────────────────────────────────────────────────────┐
+│  My Tournaments                    [+ New]          │
+├─────────────────────────────────────────────────────┤
+│  📅 Battle Under Lights S2          [Manage]       │
+│     🔴 Live • 4 players • 2 courts • Round 2       │
+│     Public link: app.com/tournaments/abc123         │
+│                                                      │
+│  📅 Summer Smash 2026               [Manage]       │
+│     Scheduled Aug 15 • 16 registered                │
+│                                                      │
+│  📊 Your Plan: Pro ($29/mo)        [Upgrade]       │
+│     Unlimited tournaments • Real-time • Email       │
+│                                                      │
+│  📜 Past Tournaments (3 archived)                   │
+└─────────────────────────────────────────────────────┘
+```
+
+### Public Discovery Page
+```
+/discover
+
+┌─────────────────────────────────────────────────────┐
+│  Discover Tournaments                               │
+│  [Search by name, location, date...]                │
+├─────────────────────────────────────────────────────┤
+│  🔴 Live Now                                        │
+│  - Battle Under Lights S2 (Chicago)                │
+│  - Spring Smash (Austin)                            │
+│                                                      │
+│  📅 Upcoming                                        │
+│  - Summer Championship (Miami) - Aug 15             │
+│  - Weekend Warriors (Denver) - Aug 20               │
+│                                                      │
+│  ✓ Recently Completed                              │
+│  - March Madness (NYC) - Mar 15                     │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Conclusion
 
-### Current State (MVP)
+### Current State (Core MVP)
 The implemented system provides:
 - ✅ **Directors** have court management, status overview, and round advancement control
 - ✅ **Referees** have frictionless court-centric scoring with auto-loading matches
 - ✅ **Spectators** have comprehensive fixture views with multiple modes and court information
 - ✅ **Automatic workflows** for court assignment, winner pairing, and tournament progression
 
+### Next Phase (Multi-Tenant SaaS)
+Before adding features, establish business foundation:
+- 🎯 **Authentication** for directors (NextAuth.js)
+- 🎯 **Multi-tenancy** with data isolation (RLS policies)
+- 🎯 **Dashboard** for tournament management
+- 🎯 **Public discovery** page
+- 🎯 **Token-based access** for players/referees
+
 ### Future Vision
 The complete ecosystem will include:
-- 🔮 **Players** with personal views, notifications, and match tracking
 - 🔮 **Real-time updates** across all views without refresh
+- 🔮 **Player personal views** with notifications and match tracking
+- 🔮 **Notification system** via email/SMS/push
 - 🔮 **Advanced features** like offline scoring, error correction, and projections
-- 🔮 **Enhanced notifications** via email/SMS/push for all actors
+- 🔮 **Enterprise features** for large organizations
 
-**The foundation is solid. The core workflows are battle-tested. Future enhancements will build on this robust base.**
+**The foundation is solid. The core workflows are battle-tested. The SaaS transformation will unlock monetization and scale.**
