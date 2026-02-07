@@ -32,11 +32,7 @@ export async function GET(
       .eq('id', id)
       .single()
 
-    if (matchError) {
-      return NextResponse.json({ error: matchError.message }, { status: 500 })
-    }
-
-    if (!match) {
+    if (matchError || !match) {
       return NextResponse.json({ error: 'Match not found' }, { status: 404 })
     }
 
@@ -62,7 +58,7 @@ export async function GET(
     }
 
     return NextResponse.json({
-      match,
+      ...match,
       player_a,
       player_b,
     })
@@ -120,7 +116,7 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ match: data })
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Error updating match:', error)
     return NextResponse.json(

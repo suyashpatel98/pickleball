@@ -50,5 +50,5 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ match: data })
+  return NextResponse.json(data)
 }

@@ -58,5 +58,5 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ teams: data })
+  return NextResponse.json(data)
 }

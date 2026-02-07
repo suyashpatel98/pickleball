@@ -16,6 +16,8 @@ type TeamWithPlayers = Team & {
 type MatchWithTeams = Match & {
   team_a?: TeamWithPlayers | null
   team_b?: TeamWithPlayers | null
+  player_a?: Player | null
+  player_b?: Player | null
 }
 
 interface TournamentFixturesProps {
@@ -55,7 +57,17 @@ export default function TournamentFixtures({
     return match.round === selectedRound
   })
 
-  const getTeamDisplay = (team?: TeamWithPlayers | null) => {
+  const getTeamDisplay = (team?: TeamWithPlayers | null, player?: Player | null) => {
+    // For singles matches, display player name
+    if (player) {
+      return (
+        <div className="text-sm">
+          <div className="font-medium">{player.name || 'Unknown'}</div>
+        </div>
+      )
+    }
+
+    // For team matches, display team players
     if (!team) return 'TBD'
     const player1Name = team.player1?.name || 'Unknown'
     const player2Name = team.player2?.name || ''
@@ -67,7 +79,13 @@ export default function TournamentFixtures({
     )
   }
 
-  const getTeamName = (team?: TeamWithPlayers | null) => {
+  const getTeamName = (team?: TeamWithPlayers | null, player?: Player | null) => {
+    // For singles matches, return player name
+    if (player) {
+      return player.name || 'Unknown'
+    }
+
+    // For team matches, return team name
     if (!team) return 'TBD'
     const player1Name = team.player1?.name || 'Unknown'
     const player2Name = team.player2?.name || ''
@@ -95,14 +113,22 @@ export default function TournamentFixtures({
       const teamStats: { [teamId: string]: TeamStanding } = {}
 
       poolMatches.forEach(match => {
-        const teamAId = match.team_a_id || ''
-        const teamBId = match.team_b_id || ''
+        // For singles matches, use slot IDs; for team matches, use team IDs
+        const teamAId = match.slot_a || match.team_a_id || ''
+        const teamBId = match.slot_b || match.team_b_id || ''
 
         // Initialize team A stats
         if (!teamStats[teamAId]) {
           teamStats[teamAId] = {
             teamId: teamAId,
-            team: match.team_a,
+            team: match.team_a || (match.player_a ? {
+              id: match.slot_a || '',
+              team_name: match.player_a.name,
+              player1: match.player_a,
+              player2: null,
+              tournament_id: '',
+              created_at: ''
+            } as TeamWithPlayers : null),
             played: 0,
             won: 0,
             lost: 0,
@@ -117,7 +143,14 @@ export default function TournamentFixtures({
         if (!teamStats[teamBId]) {
           teamStats[teamBId] = {
             teamId: teamBId,
-            team: match.team_b,
+            team: match.team_b || (match.player_b ? {
+              id: match.slot_b || '',
+              team_name: match.player_b.name,
+              player1: match.player_b,
+              player2: null,
+              tournament_id: '',
+              created_at: ''
+            } as TeamWithPlayers : null),
             played: 0,
             won: 0,
             lost: 0,
@@ -269,20 +302,20 @@ export default function TournamentFixtures({
                   <div className="text-xs text-muted-foreground mb-3">Match ID: {match.id.slice(0, 8)}</div>
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
-                    {/* Team A */}
+                    {/* Player/Team A */}
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">
-                        Team ID: {match.team_a_id?.slice(0, 8) || 'N/A'}
+                        {match.player_a ? `Player ID: ${match.slot_a?.slice(0, 8) || 'N/A'}` : `Team ID: ${match.team_a_id?.slice(0, 8) || 'N/A'}`}
                       </div>
-                      {getTeamDisplay(match.team_a)}
+                      {getTeamDisplay(match.team_a, match.player_a)}
                     </div>
 
-                    {/* Team B */}
+                    {/* Player/Team B */}
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">
-                        Team ID: {match.team_b_id?.slice(0, 8) || 'N/A'}
+                        {match.player_b ? `Player ID: ${match.slot_b?.slice(0, 8) || 'N/A'}` : `Team ID: ${match.team_b_id?.slice(0, 8) || 'N/A'}`}
                       </div>
-                      {getTeamDisplay(match.team_b)}
+                      {getTeamDisplay(match.team_b, match.player_b)}
                     </div>
                   </div>
 

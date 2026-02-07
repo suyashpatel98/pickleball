@@ -75,5 +75,5 @@ export async function POST(req: Request) {
 
   // TODO: advance winner to next round (if you pre-created next-round matches)
 
-  return NextResponse.json({ match: updatedMatch })
+  return NextResponse.json(updatedMatch)
 }

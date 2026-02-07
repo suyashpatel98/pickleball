@@ -16,7 +16,7 @@ export default function Home() {
     try {
       const res = await fetch('/api/tournaments')
       const data = await res.json()
-      setTournaments(data.tournaments || [])
+      setTournaments(data || [])
     } catch (error) {
       console.error('Failed to fetch tournaments:', error)
     } finally {
