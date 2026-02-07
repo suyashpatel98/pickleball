@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import CourtManagement from '@/components/CourtManagement'
 
 type Court = {
@@ -19,6 +20,13 @@ type Court = {
   } | null
 }
 
+type RoundStatus = {
+  current_round: number
+  total_matches: number
+  completed_matches: number
+  can_advance: boolean
+}
+
 export default function TournamentManagePage() {
   const params = useParams()
   const router = useRouter()
@@ -26,10 +34,14 @@ export default function TournamentManagePage() {
 
   const [courts, setCourts] = useState<Court[]>([])
   const [tournamentName, setTournamentName] = useState<string>('')
+  const [roundStatus, setRoundStatus] = useState<RoundStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const [advancing, setAdvancing] = useState(false)
+  const [advanceMessage, setAdvanceMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => {
     fetchTournamentAndCourts()
+    fetchRoundStatus()
   }, [tournamentId])
 
   const fetchTournamentAndCourts = async () => {
@@ -86,6 +98,67 @@ export default function TournamentManagePage() {
     }
   }
 
+  const fetchRoundStatus = async () => {
+    try {
+      const res = await fetch(`/api/tournaments/${tournamentId}`)
+      if (res.ok) {
+        const data = await res.json()
+        const matches = data.matches || []
+
+        if (matches.length > 0) {
+          const maxRound = Math.max(...matches.map((m: any) => m.round))
+          const currentRoundMatches = matches.filter((m: any) => m.round === maxRound)
+          const completedMatches = currentRoundMatches.filter(
+            (m: any) => m.status === 'completed' || m.status === 'finished'
+          )
+
+          setRoundStatus({
+            current_round: maxRound,
+            total_matches: currentRoundMatches.length,
+            completed_matches: completedMatches.length,
+            can_advance: completedMatches.length === currentRoundMatches.length && currentRoundMatches.length > 0
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch round status:', error)
+    }
+  }
+
+  const handleAdvanceRound = async () => {
+    setAdvancing(true)
+    setAdvanceMessage(null)
+
+    try {
+      const res = await fetch(`/api/tournaments/${tournamentId}/advance-round`, {
+        method: 'POST',
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setAdvanceMessage({ type: 'error', text: data.error || 'Failed to advance round' })
+      } else {
+        if (data.champion) {
+          setAdvanceMessage({ type: 'success', text: `🏆 Tournament Complete! Champion: ${data.champion}` })
+        } else {
+          setAdvanceMessage({
+            type: 'success',
+            text: `✓ Advanced to Round ${data.next_round}. ${data.matches_created} matches created.`
+          })
+        }
+
+        // Refresh data
+        await fetchTournamentAndCourts()
+        await fetchRoundStatus()
+      }
+    } catch (error) {
+      setAdvanceMessage({ type: 'error', text: 'Failed to advance round' })
+    } finally {
+      setAdvancing(false)
+    }
+  }
+
   const handleCourtsUpdated = () => {
     fetchTournamentAndCourts()
   }
@@ -115,6 +188,59 @@ export default function TournamentManagePage() {
             </Link>
           </div>
         </div>
+
+        {/* Advance Message */}
+        {advanceMessage && (
+          <Alert variant={advanceMessage.type === 'error' ? 'destructive' : 'default'} className="mb-6">
+            <AlertDescription>{advanceMessage.text}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Round Status & Advancement */}
+        {roundStatus && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Tournament Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Round</p>
+                    <p className="text-2xl font-bold">Round {roundStatus.current_round}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Match Progress</p>
+                    <p className="text-2xl font-bold">
+                      {roundStatus.completed_matches}/{roundStatus.total_matches}
+                    </p>
+                  </div>
+                  <div>
+                    <Badge variant={roundStatus.can_advance ? 'default' : 'secondary'}>
+                      {roundStatus.can_advance ? 'Ready to Advance' : 'In Progress'}
+                    </Badge>
+                  </div>
+                </div>
+
+                {roundStatus.can_advance && (
+                  <Button
+                    onClick={handleAdvanceRound}
+                    disabled={advancing}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    {advancing ? 'Advancing...' : `Advance to Round ${roundStatus.current_round + 1}`}
+                  </Button>
+                )}
+
+                {!roundStatus.can_advance && roundStatus.total_matches > 0 && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Complete all Round {roundStatus.current_round} matches to advance
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Court Overview Grid */}
         {courts.length > 0 && (
