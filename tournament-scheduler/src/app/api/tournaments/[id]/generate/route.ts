@@ -73,15 +73,26 @@ const players = playersData.map(p => ({ id: p.id, dupr: p.dupr ?? 0 }))
 const seeded = seedPlayers(players)
 const { matches } = generateBracketSeeds(seeded)
 
-// Fetch courts for random assignment
-const { data: courts } = await supabase
+// Fetch courts for assignment - REQUIRED
+const { data: courts, error: courtsError } = await supabase
   .from('courts')
   .select('id')
   .eq('tournament_id', tournament_id)
 
-const courtIds = courts?.map(c => c.id) || []
+if (courtsError) {
+  return NextResponse.json({ error: courtsError.message }, { status: 500 })
+}
 
-// Insert matches for round 1 with random court assignment
+if (!courts || courts.length === 0) {
+  return NextResponse.json({
+    error: 'No courts found. Please create courts before generating bracket.',
+    hint: 'Visit the tournament management page to create courts.'
+  }, { status: 400 })
+}
+
+const courtIds = courts.map(c => c.id)
+
+// Insert matches for round 1 with round-robin court assignment
 const insertMatches = matches.map((m, index) => ({
     tournament_id,
     round: 1,
@@ -89,7 +100,7 @@ const insertMatches = matches.map((m, index) => ({
     slot_b: m.slot_b,
     status: m.slot_b ? 'scheduled' : 'finished', // BYE automatically finished
     winner: m.slot_b ? null : m.slot_a, // auto-advance BYE
-    court_id: courtIds.length > 0 ? courtIds[index % courtIds.length] : null, // Randomly distribute
+    court_id: courtIds[index % courtIds.length], // Round-robin distribution
 }))
 
 const { data: insertedMatches, error: matchError } = await supabase

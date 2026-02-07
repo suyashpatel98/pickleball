@@ -44,13 +44,24 @@ export async function POST(req: Request) {
     poolAssignments[pools[poolIndex]].push(team)
   })
 
-  // Fetch courts for random assignment
-  const { data: courts } = await supabase
+  // Fetch courts for assignment - REQUIRED
+  const { data: courts, error: courtsError } = await supabase
     .from('courts')
     .select('id')
     .eq('tournament_id', tournament_id)
 
-  const courtIds = courts?.map(c => c.id) || []
+  if (courtsError) {
+    return NextResponse.json({ error: courtsError.message }, { status: 500 })
+  }
+
+  if (!courts || courts.length === 0) {
+    return NextResponse.json({
+      error: 'No courts found. Please create courts before generating pools.',
+      hint: 'Visit the tournament management page to create courts.'
+    }, { status: 400 })
+  }
+
+  const courtIds = courts.map(c => c.id)
 
   // Generate round-robin matches for each pool
   const matches = []
@@ -69,7 +80,7 @@ export async function POST(req: Request) {
           team_a_id: poolTeams[i].id,
           team_b_id: poolTeams[j].id,
           status: 'scheduled',
-          court_id: courtIds.length > 0 ? courtIds[matchIndex % courtIds.length] : null,
+          court_id: courtIds[matchIndex % courtIds.length], // Round-robin distribution
           score_a: null,
           score_b: null,
           winner: null,

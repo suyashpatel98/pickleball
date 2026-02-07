@@ -36,7 +36,31 @@ export async function POST() {
     const { tournament } = await tournamentResponse.json()
     console.log('Tournament created:', tournament.id)
 
-    // 2. Register 4 players using POST /api/tournaments/[id]/register
+    // 2. Create 2 courts using POST /api/tournaments/[id]/courts
+    console.log('Creating 2 courts...')
+
+    for (let i = 1; i <= 2; i++) {
+      const courtResponse = await fetch(
+        `${baseUrl}/api/tournaments/${tournament.id}/courts`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: `Court ${i}`,
+            location_notes: i === 1 ? 'Main Court' : 'Side Court',
+          }),
+        }
+      )
+
+      if (!courtResponse.ok) {
+        const error = await courtResponse.json()
+        throw new Error(`Failed to create court ${i}: ${error.error}`)
+      }
+    }
+
+    console.log('2 courts created')
+
+    // 3. Register 4 players using POST /api/tournaments/[id]/register
     console.log('Registering 4 players...')
 
     for (let i = 0; i < 4; i++) {
@@ -63,7 +87,7 @@ export async function POST() {
 
     console.log('4 players registered')
 
-    // 3. Generate knockout bracket using POST /api/tournaments/[id]/generate
+    // 4. Generate knockout bracket using POST /api/tournaments/[id]/generate
     console.log('Generating knockout bracket...')
 
     const generateResponse = await fetch(
@@ -87,10 +111,12 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       tournament_id: tournament.id,
+      courts_created: 2,
       players_created: 4,
       matches_created: matches.length,
       format: 'knockout (single-elimination)',
-      view_url: `/tournaments/${tournament.id}/fixtures`,
+      view_url: `/tournaments/${tournament.id}`,
+      manage_url: `/tournaments/${tournament.id}/manage`,
     })
   } catch (error) {
     console.error('Seeding error:', error)
