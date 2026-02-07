@@ -117,6 +117,21 @@ create table public.tournaments (
 ) TABLESPACE pg_default;
 ```
 
+#### `courts`
+```sql
+create table public.courts (
+  id uuid not null default gen_random_uuid (),
+  tournament_id uuid null,
+  name text not null,
+  location_notes text null,
+  created_at timestamp with time zone null default now(),
+  constraint courts_pkey primary key (id),
+  constraint courts_tournament_id_fkey foreign key (tournament_id) references tournaments (id) on delete cascade
+) TABLESPACE pg_default;
+
+create index if not exists idx_courts_tournament_id on public.courts using btree (tournament_id) TABLESPACE pg_default;
+```
+
 ---
 
 ## All Exposed APIs
@@ -172,11 +187,13 @@ create table public.tournaments (
 - **Purpose**: Generate single-elimination bracket
 - **URL Parameters**: `id` (tournament UUID)
 - **Functionality**:
+  - Validates courts exist (required)
   - Seeds players by DUPR rating (highest first)
   - Generates bracket with BYE matches
   - Creates round 1 matches
+  - Auto-assigns courts using round-robin distribution
 - **Response**: Seeded matches and bracket structure
-- **Status Codes**: 200 (success), 400 (no players), 500 (error)
+- **Status Codes**: 200 (success), 400 (no players or no courts), 500 (error)
 
 #### `POST /api/tournaments/[id]/generate-pools`
 - **Purpose**: Generate pool/group stage matches
@@ -185,8 +202,41 @@ create table public.tournaments (
   - `pools` (array, defaults to ['A', 'B', 'C', 'D'])
   - `teams_per_pool` (number, defaults to 4)
 - **Functionality**: Distributes teams into pools and generates round-robin matches
+- **Validation**: Requires courts to exist before generation
 - **Response**: Generated matches and pool assignments
-- **Status Codes**: 200 (success), 400 (no teams), 500 (error)
+- **Status Codes**: 200 (success), 400 (no teams or no courts), 500 (error)
+
+#### `POST /api/tournaments/[id]/advance-round`
+- **Purpose**: Advance tournament to next round
+- **URL Parameters**: `id` (tournament UUID)
+- **Request Body**: Empty (no parameters)
+- **Functionality**:
+  - Finds current round (highest round number)
+  - Validates all current round matches are completed
+  - Extracts winners from completed matches
+  - Pairs winners for next round
+  - Creates new matches with round-robin court assignment
+  - Detects tournament completion (1 winner remaining)
+- **Response (Success - Advanced)**:
+  ```json
+  {
+    "message": "Advanced to Round 2",
+    "current_round": 1,
+    "next_round": 2,
+    "matches_created": 1,
+    "winners_advanced": 2,
+    "matches": [...]
+  }
+  ```
+- **Response (Success - Complete)**:
+  ```json
+  {
+    "message": "Tournament complete!",
+    "champion": "uuid",
+    "final_round": 2
+  }
+  ```
+- **Status Codes**: 200 (success), 400 (incomplete matches or no courts), 500 (error)
 
 ---
 
@@ -222,6 +272,133 @@ create table public.tournaments (
   - `player2_id` (UUID, optional)
 - **Response**: Created team object
 - **Status Codes**: 201 (created), 400 (missing required fields), 500 (error)
+
+---
+
+### Court Management
+
+#### `POST /api/tournaments/[id]/courts`
+- **Purpose**: Create a new court for a tournament
+- **URL Parameters**: `id` (tournament UUID)
+- **Request Body**:
+  - `name` (string, required) - Court name (e.g., "Court 1", "Main Court")
+  - `location_notes` (string, optional) - Location details (e.g., "Near main entrance")
+- **Response**: Created court object
+- **Example Response**:
+  ```json
+  {
+    "court": {
+      "id": "uuid",
+      "tournament_id": "uuid",
+      "name": "Court 1",
+      "location_notes": "Near main entrance",
+      "created_at": "timestamp"
+    }
+  }
+  ```
+- **Status Codes**: 201 (created), 400 (missing name), 500 (error)
+
+#### `GET /api/tournaments/[id]/courts`
+- **Purpose**: Retrieve all courts for a tournament
+- **URL Parameters**: `id` (tournament UUID)
+- **Response**: Array of court objects
+- **Example Response**:
+  ```json
+  [
+    {
+      "id": "uuid",
+      "tournament_id": "uuid",
+      "name": "Court 1",
+      "location_notes": "Near main entrance",
+      "created_at": "timestamp"
+    }
+  ]
+  ```
+- **Status Codes**: 200 (success), 500 (error)
+
+#### `GET /api/courts/[id]`
+- **Purpose**: Retrieve court details
+- **URL Parameters**: `id` (court UUID)
+- **Response**: Court object
+- **Example Response**:
+  ```json
+  {
+    "id": "uuid",
+    "tournament_id": "uuid",
+    "name": "Court 1",
+    "location_notes": "Near main entrance",
+    "created_at": "timestamp"
+  }
+  ```
+- **Status Codes**: 200 (success), 404 (not found), 500 (error)
+
+#### `PATCH /api/courts/[id]`
+- **Purpose**: Update court details
+- **URL Parameters**: `id` (court UUID)
+- **Request Body** (all optional):
+  - `name` (string)
+  - `location_notes` (string)
+- **Response**: Updated court object
+- **Example Response**:
+  ```json
+  {
+    "court": {
+      "id": "uuid",
+      "name": "Court 1 - Updated",
+      "location_notes": "New location"
+    }
+  }
+  ```
+- **Status Codes**: 200 (success), 404 (not found), 500 (error)
+
+#### `DELETE /api/courts/[id]`
+- **Purpose**: Delete a court
+- **URL Parameters**: `id` (court UUID)
+- **Functionality**: Deletes court and unassigns matches (sets court_id to null)
+- **Response**: Success message
+- **Example Response**:
+  ```json
+  {
+    "message": "Court deleted successfully"
+  }
+  ```
+- **Status Codes**: 200 (success), 404 (not found), 500 (error)
+
+#### `GET /api/courts/[id]/matches`
+- **Purpose**: Retrieve match queue for a specific court (referee view)
+- **URL Parameters**: `id` (court UUID)
+- **Response**: Court details with current, next, and upcoming matches
+- **Example Response**:
+  ```json
+  {
+    "court": {
+      "id": "uuid",
+      "name": "Court 1"
+    },
+    "current_match": {
+      "id": "uuid",
+      "round": 1,
+      "status": "live",
+      "player_a": { "id": "uuid", "name": "Player 1" },
+      "player_b": { "id": "uuid", "name": "Player 2" }
+    },
+    "next_match": {
+      "id": "uuid",
+      "round": 1,
+      "status": "scheduled",
+      "player_a": { "id": "uuid", "name": "Player 3" },
+      "player_b": { "id": "uuid", "name": "Player 4" }
+    },
+    "upcoming_matches": [...]
+  }
+  ```
+- **Functionality**:
+  - `current_match`: First 'live' match, or first 'scheduled' if none live, or null
+  - `next_match`: First scheduled match after current
+  - `upcoming_matches`: Queue of future matches (up to next 3)
+  - Includes full player/team data
+  - Ordered by round, created_at
+- **Status Codes**: 200 (success), 404 (court not found), 500 (error)
 
 ---
 
@@ -308,20 +485,51 @@ create table public.tournaments (
   ```
 - **Functionality**:
   - Accepts array of game scores
-  - Determines winner based on games won
+  - Determines winner based on games won (best of 3)
   - Stores detailed score in `match_scores` table
-  - Updates match status to 'finished'
+  - Updates match status to 'completed'
 - **Response**: Updated match object directly
 - **Example Response**:
   ```json
   {
     "id": "uuid",
     "winner": "uuid",
-    "status": "finished"
+    "status": "completed"
   }
   ```
 - **Status Codes**: 200 (success), 400 (no games/tie), 404 (not found), 500 (error)
 
+#### `PATCH /api/matches/[id]/court`
+- **Purpose**: Assign or unassign a match to a court
+- **URL Parameters**: `id` (match UUID)
+- **Request Body**:
+  - `court_id` (UUID or null, required)
+- **Request Example (Assign)**:
+  ```json
+  {
+    "court_id": "court-uuid"
+  }
+  ```
+- **Request Example (Unassign)**:
+  ```json
+  {
+    "court_id": null
+  }
+  ```
+- **Functionality**:
+  - Validates court exists before assignment
+  - Allows unassigning by passing null
+- **Response**: Updated match object
+- **Example Response**:
+  ```json
+  {
+    "match": {
+      "id": "uuid",
+      "court_id": "court-uuid"
+    }
+  }
+  ```
+- **Status Codes**: 200 (success), 400 (court not found), 404 (match not found), 500 (error)
 
 ---
 
@@ -337,14 +545,19 @@ create table public.tournaments (
   {
     "success": true,
     "tournament_id": "uuid-string",
+    "courts_created": 2,
     "players_created": 4,
     "matches_created": 2,
     "format": "knockout (single-elimination)",
-    "view_url": "/tournaments/{tournament_id}/fixtures"
+    "view_url": "/tournaments/{tournament_id}",
+    "manage_url": "/tournaments/{tournament_id}/manage"
   }
   ```
 - **Created Data**:
   - **Tournament**: "Battle Under Lights - S2" (date: 2025-01-20, format: single-elim, type: singles)
+  - **2 Courts**:
+    - Court 1 (Main Court)
+    - Court 2 (Side Court)
   - **4 Players**: player_1 through player_4 with emails `player0@example.com` through `player3@example.com`
     - player_1: DUPR 3.0
     - player_2: DUPR 3.5
@@ -352,13 +565,15 @@ create table public.tournaments (
     - player_4: DUPR 4.5
   - **2 Semi-Final Matches** (Round 1):
     - Seeded by DUPR rating (highest vs lowest)
+    - Automatically assigned to courts (round-robin)
     - Automatically generated by the bracket API
 - **Uses Following APIs**:
   - `POST /api/tournaments` - Creates the tournament
+  - `POST /api/tournaments/[id]/courts` - Creates courts (x2)
   - `POST /api/tournaments/[id]/register` - Registers each player (creates player if needed)
-  - `POST /api/tournaments/[id]/generate` - Generates single-elimination bracket matches
+  - `POST /api/tournaments/[id]/generate` - Generates single-elimination bracket matches with court assignments
 - **Tournament Structure**:
-  - 4 players → 2 semi-finals → 1 final (created when semis complete)
+  - 2 courts → 4 players → 2 semi-finals → 1 final (created when semis complete via advance-round)
 - **Status Codes**: 200 (success), 500 (error)
 
 ---
@@ -385,24 +600,5 @@ To set up a complete test tournament:
 3. **Access the tournament**:
    - Navigate to the URL returned in `view_url`
    - Or visit `/tournaments` to see all tournaments
-
----
-
-### Utility Endpoints
-
-#### `GET /api/test-supabase`
-- **Purpose**: Test Supabase connection and diagnose issues
-- **Response**: Raw tournaments data from database
-- **Status Codes**: 200
-
-#### `GET /api/dev/migrate`
-- **Purpose**: Display database schema migration SQL (informational only)
-- **Response**: Migration SQL script with schema updates
-- **Includes**:
-  - Add `location` and `tournament_type` columns to tournaments
-  - Create `teams` table with foreign keys
-  - Add pool, court, team, and score columns to matches
-  - Create performance indexes
-- **Status Codes**: 200
 
 
