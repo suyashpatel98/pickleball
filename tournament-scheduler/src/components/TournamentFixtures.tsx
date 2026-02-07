@@ -212,7 +212,14 @@ export default function TournamentFixtures({
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-[#2c3e50] text-white px-6 py-4">
-        <h1 className="text-xl font-bold">Dinker's Pickleball Academy</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">Dinker's Pickleball Academy</h1>
+          <Link href={`/tournaments/${tournamentId}/manage`}>
+            <Button variant="outline" size="sm" className="bg-white text-[#2c3e50] hover:bg-gray-100">
+              Manage Tournament
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Tournament Info */}

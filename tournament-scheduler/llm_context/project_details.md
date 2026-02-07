@@ -33,23 +33,30 @@ create table public.matches (
   scheduled_at timestamp with time zone null,
   created_at timestamp with time zone null default now(),
   pool text null,
-  court integer null,
   team_a_id uuid null,
   team_b_id uuid null,
   score_a integer null,
   score_b integer null,
+  court_id uuid null,
   constraint matches_pkey primary key (id),
   constraint matches_slot_a_fkey foreign KEY (slot_a) references players (id),
   constraint matches_slot_b_fkey foreign KEY (slot_b) references players (id),
   constraint matches_team_a_id_fkey foreign KEY (team_a_id) references teams (id) on delete set null,
   constraint matches_team_b_id_fkey foreign KEY (team_b_id) references teams (id) on delete set null,
   constraint matches_tournament_id_fkey foreign KEY (tournament_id) references tournaments (id) on delete CASCADE,
+  constraint matches_court_id_fkey foreign KEY (court_id) references courts (id) on delete set null,
   constraint matches_winner_fkey foreign KEY (winner) references players (id)
 ) TABLESPACE pg_default;
 
 create index IF not exists idx_matches_pool on public.matches using btree (pool) TABLESPACE pg_default;
+
 create index IF not exists idx_matches_team_a_id on public.matches using btree (team_a_id) TABLESPACE pg_default;
+
 create index IF not exists idx_matches_team_b_id on public.matches using btree (team_b_id) TABLESPACE pg_default;
+
+create index IF not exists idx_matches_court_id on public.matches using btree (court_id) TABLESPACE pg_default;
+
+create index IF not exists idx_matches_court_status on public.matches using btree (court_id, status) TABLESPACE pg_default;
 ```
 
 #### `players`

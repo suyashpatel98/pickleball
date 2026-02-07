@@ -327,6 +327,96 @@ describe('API Tests', () => {
     })
   })
 
+  describe('Court Management', () => {
+    let courtId: string
+
+    it('POST /api/tournaments/[id]/courts - should create court', async () => {
+      const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/courts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Court 1',
+          location_notes: 'Near main entrance',
+        }),
+      })
+
+      expect(response.status).toBe(201)
+      const data = await response.json()
+      expect(data).toHaveProperty('court')
+      expect(data.court).toHaveProperty('id')
+      expect(data.court.name).toBe('Court 1')
+      courtId = data.court.id
+    })
+
+    it('POST /api/tournaments/[id]/courts - should return 400 when name is missing', async () => {
+      const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/courts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+
+      expect(response.status).toBe(400)
+    })
+
+    it('GET /api/tournaments/[id]/courts - should return courts', async () => {
+      const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/courts`)
+      expect(response.status).toBe(200)
+
+      const data = await response.json()
+      expect(Array.isArray(data)).toBe(true)
+      expect(data.length).toBeGreaterThan(0)
+    })
+
+    it('GET /api/courts/[id] - should return court details', async () => {
+      const response = await fetch(`${BASE_URL}/api/courts/${courtId}`)
+      expect(response.status).toBe(200)
+
+      const data = await response.json()
+      expect(data.id).toBe(courtId)
+      expect(data.name).toBe('Court 1')
+    })
+
+    it('PATCH /api/courts/[id] - should update court', async () => {
+      const response = await fetch(`${BASE_URL}/api/courts/${courtId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Court 1 - Updated',
+        }),
+      })
+
+      expect(response.status).toBe(200)
+      const data = await response.json()
+      expect(data.court.name).toBe('Court 1 - Updated')
+    })
+
+    it('PATCH /api/matches/[id]/court - should assign match to court', async () => {
+      const response = await fetch(`${BASE_URL}/api/matches/${matchId}/court`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          court_id: courtId,
+        }),
+      })
+
+      expect(response.status).toBe(200)
+      const data = await response.json()
+      expect(data.match.court_id).toBe(courtId)
+    })
+
+    it('GET /api/courts/[id]/matches - should return court matches', async () => {
+      const response = await fetch(`${BASE_URL}/api/courts/${courtId}/matches`)
+      expect(response.status).toBe(200)
+
+      const data = await response.json()
+      expect(data).toHaveProperty('court')
+      expect(data).toHaveProperty('current_match')
+      expect(data).toHaveProperty('next_match')
+      expect(data).toHaveProperty('upcoming_matches')
+      expect(data.current_match).toBeTruthy()
+    })
+  })
+
   describe('Match Management', () => {
     it('GET /api/matches/[id] - should return match details', async () => {
       const response = await fetch(`${BASE_URL}/api/matches/${matchId}`)

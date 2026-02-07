@@ -2,16 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Match, Player } from '@/types/db'
+import { Match, Player, Team } from '@/types/db'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
+type TeamWithPlayers = Team & {
+  player1: Player
+  player2?: Player | null
+}
+
 type MatchWithPlayers = Match & {
-  player_a: Player | null
-  player_b: Player | null
+  player_a?: Player | null
+  player_b?: Player | null
+  team_a?: TeamWithPlayers | null
+  team_b?: TeamWithPlayers | null
 }
 
 type GameScore = {
@@ -26,24 +33,37 @@ export default function CourtRefereePage() {
 
   const [currentMatch, setCurrentMatch] = useState<MatchWithPlayers | null>(null)
   const [nextMatch, setNextMatch] = useState<MatchWithPlayers | null>(null)
+  const [upcomingMatches, setUpcomingMatches] = useState<MatchWithPlayers[]>([])
+  const [courtName, setCourtName] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [games, setGames] = useState<GameScore[]>([{ a: 0, b: 0 }])
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   // Fetch matches for this court
   const fetchCourtMatches = async () => {
     try {
       setLoading(true)
-      // TODO: This endpoint needs to be created - for now, we'll use a workaround
-      // Ideally: GET /api/courts/{courtNumber}/matches
+      setError(null)
 
-      // For now, let's just show a message that this needs backend support
-      setError('Court-based match loading requires backend API implementation')
+      const res = await fetch(`/api/courts/${courtNumber}/matches`)
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to fetch court matches')
+      }
+
+      const data = await res.json()
+      setCourtName(data.court?.name || `Court ${courtNumber}`)
+      setCurrentMatch(data.current_match)
+      setNextMatch(data.next_match)
+      setUpcomingMatches(data.upcoming_matches || [])
+
       setLoading(false)
     } catch (err) {
       console.error('Failed to fetch court matches:', err)
-      setError('Failed to load court matches')
+      setError(err instanceof Error ? err.message : 'Failed to load court matches')
       setLoading(false)
     }
   }
@@ -114,9 +134,17 @@ export default function CourtRefereePage() {
         throw new Error(errorData.error || 'Failed to submit score')
       }
 
-      // Reset form and reload court matches
+      // Show success message
+      setSuccess('Match completed! Loading next match...')
+
+      // Reset form
       setGames([{ a: 0, b: 0 }])
-      await fetchCourtMatches()
+
+      // Wait a moment for database to update, then reload
+      setTimeout(async () => {
+        await fetchCourtMatches()
+        setSuccess(null)
+      }, 1000)
     } catch (err) {
       console.error('Failed to submit score:', err)
       setError(err instanceof Error ? err.message : 'Failed to submit score')
@@ -137,39 +165,36 @@ export default function CourtRefereePage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Court Header */}
-        <div className="bg-[#2c3e50] text-white px-6 py-4 rounded-t-lg">
-          <h1 className="text-2xl font-bold">Court {courtNumber}</h1>
+        <div className="bg-[#2c3e50] text-white px-6 py-4 rounded-lg">
+          <h1 className="text-2xl font-bold">{courtName || `Court ${courtNumber}`}</h1>
           <p className="text-sm text-gray-300 mt-1">Referee View</p>
         </div>
 
-        {/* Error/Info Alert */}
+        {/* Error/Success Alerts */}
         {error && (
           <Alert variant="destructive" className="mt-4">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+        {success && (
+          <Alert className="mt-4 bg-green-50 border-green-200">
+            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          </Alert>
+        )}
 
-        {/* Temporary Implementation Notice */}
-        <Card className="mt-4 border-yellow-500 bg-yellow-50">
-          <CardHeader>
-            <CardTitle className="text-yellow-900">🚧 Implementation in Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-yellow-800 space-y-2">
-              <p><strong>This court-centric referee view requires:</strong></p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Backend: Courts table in database</li>
-                <li>Backend: API endpoint <code className="bg-yellow-200 px-1 rounded">GET /api/courts/{'{courtId}'}/matches</code></li>
-                <li>Backend: Match-to-court assignment functionality</li>
-                <li>Frontend: Auto-refresh when match completes</li>
-              </ul>
-              <p className="mt-4">
-                <strong>Temporary workaround:</strong> Use the tournament view to select a specific match,
-                or use the match ID directly at <code className="bg-yellow-200 px-1 rounded">/matches/{'{matchId}'}</code>
+        {/* No Current Match - Info */}
+        {!loading && !currentMatch && !error && (
+          <Card className="mt-4 border-blue-500 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="text-blue-900">No Matches Assigned</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-blue-800">
+                This court currently has no matches assigned. The tournament director needs to assign matches to this court.
               </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Current Match (when implemented) */}
         {currentMatch && (
@@ -269,19 +294,63 @@ export default function CourtRefereePage() {
           </Card>
         )}
 
-        {/* Next Match Preview (when implemented) */}
+        {/* Next Match Preview */}
         {nextMatch && (
-          <Card className="mt-4 border-dashed">
+          <Card className="mt-4 border-2 border-dashed border-blue-300 bg-blue-50">
             <CardHeader>
-              <CardTitle className="text-muted-foreground">Up Next</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-blue-900">Up Next</CardTitle>
+                <Badge variant="outline" className="bg-white">
+                  Round {nextMatch.round}
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm">
-                {nextMatch.player_a?.name || 'TBD'} vs {nextMatch.player_b?.name || 'TBD'}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Round {nextMatch.round} {nextMatch.pool && `- Pool ${nextMatch.pool}`}
-              </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-blue-900">
+                    {nextMatch.player_a?.name || nextMatch.team_a?.player1?.name || 'TBD'}
+                  </p>
+                  <span className="text-xs text-blue-700">vs</span>
+                  <p className="font-medium text-blue-900">
+                    {nextMatch.player_b?.name || nextMatch.team_b?.player1?.name || 'TBD'}
+                  </p>
+                </div>
+                {nextMatch.pool && (
+                  <p className="text-xs text-blue-700">Pool {nextMatch.pool}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Upcoming Matches Queue */}
+        {upcomingMatches.length > 0 && (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-sm text-muted-foreground">
+                Match Queue ({upcomingMatches.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {upcomingMatches.slice(0, 3).map((match, index) => (
+                  <div key={match.id} className="flex items-center gap-2 text-sm p-2 bg-gray-50 rounded">
+                    <Badge variant="outline" className="text-xs">
+                      #{index + 2}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      {match.player_a?.name || match.team_a?.player1?.name || 'TBD'} vs{' '}
+                      {match.player_b?.name || match.team_b?.player1?.name || 'TBD'}
+                    </span>
+                  </div>
+                ))}
+                {upcomingMatches.length > 3 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    +{upcomingMatches.length - 3} more matches
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

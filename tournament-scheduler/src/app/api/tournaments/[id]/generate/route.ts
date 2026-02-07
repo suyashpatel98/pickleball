@@ -73,14 +73,23 @@ const players = playersData.map(p => ({ id: p.id, dupr: p.dupr ?? 0 }))
 const seeded = seedPlayers(players)
 const { matches } = generateBracketSeeds(seeded)
 
-// Insert matches for round 1
-const insertMatches = matches.map(m => ({
+// Fetch courts for random assignment
+const { data: courts } = await supabase
+  .from('courts')
+  .select('id')
+  .eq('tournament_id', tournament_id)
+
+const courtIds = courts?.map(c => c.id) || []
+
+// Insert matches for round 1 with random court assignment
+const insertMatches = matches.map((m, index) => ({
     tournament_id,
     round: 1,
     slot_a: m.slot_a,
     slot_b: m.slot_b,
     status: m.slot_b ? 'scheduled' : 'finished', // BYE automatically finished
     winner: m.slot_b ? null : m.slot_a, // auto-advance BYE
+    court_id: courtIds.length > 0 ? courtIds[index % courtIds.length] : null, // Randomly distribute
 }))
 
 const { data: insertedMatches, error: matchError } = await supabase

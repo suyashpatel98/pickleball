@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Tournament ID is required' }, { status: 400 })
   }
 
-  let body = {}
+  let body: { pools?: string[], teams_per_pool?: number } = {}
   try {
     body = await req.json()
   } catch (e) {
@@ -44,9 +44,17 @@ export async function POST(req: Request) {
     poolAssignments[pools[poolIndex]].push(team)
   })
 
+  // Fetch courts for random assignment
+  const { data: courts } = await supabase
+    .from('courts')
+    .select('id')
+    .eq('tournament_id', tournament_id)
+
+  const courtIds = courts?.map(c => c.id) || []
+
   // Generate round-robin matches for each pool
   const matches = []
-  let matchOrder = 1
+  let matchIndex = 0
 
   for (const pool of pools) {
     const poolTeams = poolAssignments[pool]
@@ -61,11 +69,12 @@ export async function POST(req: Request) {
           team_a_id: poolTeams[i].id,
           team_b_id: poolTeams[j].id,
           status: 'scheduled',
-          court: null,
+          court_id: courtIds.length > 0 ? courtIds[matchIndex % courtIds.length] : null,
           score_a: null,
           score_b: null,
           winner: null,
         })
+        matchIndex++
       }
     }
   }
