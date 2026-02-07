@@ -9,7 +9,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Tournament ID is required' }, { status: 400 })
   }
 
-  const body = await req.json()
+  let body = {}
+  try {
+    body = await req.json()
+  } catch (e) {
+    // Empty body is ok, use defaults
+  }
   const { pools = ['A', 'B', 'C', 'D'], teams_per_pool = 4 } = body
 
   const supabase = supabaseServer()

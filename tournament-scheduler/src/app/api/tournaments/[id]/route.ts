@@ -35,7 +35,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: regError.message }, { status: 500 })
   }
 
-  // Fetch matches with teams
+  // Fetch matches with teams AND players (for singles)
   const { data: matches, error: matchError } = await supabase
     .from('matches')
     .select(`
@@ -49,7 +49,9 @@ export async function GET(req: Request) {
         *,
         player1:players!teams_player1_id_fkey(*),
         player2:players!teams_player2_id_fkey(*)
-      )
+      ),
+      player_a:players!matches_slot_a_fkey(*),
+      player_b:players!matches_slot_b_fkey(*)
     `)
     .eq('tournament_id', id)
     .order('round', { ascending: true })
