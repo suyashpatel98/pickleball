@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Match, Team, Player } from '@/types/db'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -125,6 +126,7 @@ export default function TournamentFixtures({
               id: match.slot_a || '',
               team_name: match.player_a.name,
               player1: match.player_a,
+              player1_id: match.player_a.id,
               player2: null,
               tournament_id: '',
               created_at: ''
@@ -147,6 +149,7 @@ export default function TournamentFixtures({
               id: match.slot_b || '',
               team_name: match.player_b.name,
               player1: match.player_b,
+              player1_id: match.player_b.id,
               player2: null,
               tournament_id: '',
               created_at: ''
@@ -327,7 +330,7 @@ export default function TournamentFixtures({
                   </div>
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-xs mb-4">
                     <div className="text-primary">
                       {match.pool && `Pool: ${match.pool}`}
                       {match.court && ` | Court ${match.court}`}
@@ -343,6 +346,17 @@ export default function TournamentFixtures({
                       {match.status === 'completed' ? 'Completed' : match.status}
                     </Badge>
                   </div>
+
+                  {/* Action Button */}
+                  <Link href={`/matches/${match.id}`} className="block w-full">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                    >
+                      View Details
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             ))}

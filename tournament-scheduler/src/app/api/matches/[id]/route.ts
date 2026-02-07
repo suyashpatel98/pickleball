@@ -57,10 +57,18 @@ export async function GET(
       player_b = data
     }
 
+    // Fetch match scores (game-by-game breakdown)
+    const { data: matchScores } = await supabase
+      .from('match_scores')
+      .select('*')
+      .eq('match_id', id)
+      .order('created_at', { ascending: false })
+
     return NextResponse.json({
       ...match,
       player_a,
       player_b,
+      match_scores: matchScores || [],
     })
   } catch (error) {
     console.error('Error fetching match:', error)

@@ -1,18 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Match, Player } from '@/types/db'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-type MatchWithPlayers = {
-  match: Match
+type MatchScore = {
+  id: string
+  match_id: string
+  scorer_id: string
+  score_json: {
+    games: GameScore[]
+  }
+  created_at: string
+}
+
+type MatchWithPlayers = Match & {
   player_a: Player | null
   player_b: Player | null
+  match_scores?: MatchScore[]
 }
 
 type GameScore = {
@@ -22,13 +30,10 @@ type GameScore = {
 
 export default function MatchDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const id = params.id as string
 
   const [data, setData] = useState<MatchWithPlayers | null>(null)
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [games, setGames] = useState<GameScore[]>([{ a: 0, b: 0 }])
 
   useEffect(() => {
     const fetchMatch = async () => {
@@ -47,78 +52,9 @@ export default function MatchDetailPage() {
     fetchMatch()
   }, [id])
 
-  const handleAddGame = () => {
-    setGames([...games, { a: 0, b: 0 }])
-  }
-
-  const handleRemoveGame = (index: number) => {
-    if (games.length > 1) {
-      setGames(games.filter((_, i) => i !== index))
-    }
-  }
-
-  const handleScoreChange = (index: number, player: 'a' | 'b', value: string) => {
-    const newGames = [...games]
-    const numValue = parseInt(value) || 0
-    newGames[index][player] = numValue
-    setGames(newGames)
-  }
-
-  const handleSubmitScore = async () => {
-    if (!data) return
-
-    // Validate that at least one game has been played
-    if (games.every((g) => g.a === 0 && g.b === 0)) {
-      alert('Please enter at least one game score')
-      return
-    }
-
-    // Calculate winner (best of 3 - first to win 2 games)
-    const gamesWonA = games.filter((g) => g.a > g.b).length
-    const gamesWonB = games.filter((g) => g.b > g.a).length
-
-    if (gamesWonA === gamesWonB) {
-      alert('Match must have a clear winner (best of 3)')
-      return
-    }
-
-    const winnerId = gamesWonA > gamesWonB ? data.match.slot_a : data.match.slot_b
-
-    if (!winnerId) {
-      alert('Cannot determine winner')
-      return
-    }
-
-    setSubmitting(true)
-
-    try {
-      const res = await fetch(`/api/matches/${id}/score`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          games,
-          winner: winnerId,
-        }),
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to submit score')
-      }
-
-      // Redirect back to tournament page
-      router.push(`/tournaments/${data.match.tournament_id}`)
-    } catch (error) {
-      console.error('Failed to submit score:', error)
-      alert(error instanceof Error ? error.message : 'Failed to submit score')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-muted-foreground">Loading match...</p>
       </div>
     )
@@ -126,77 +62,29 @@ export default function MatchDetailPage() {
 
   if (!data) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-muted-foreground">Match not found</p>
       </div>
     )
   }
 
-  const { match, player_a, player_b } = data
+  const { player_a, player_b, match_scores, status, tournament_id, round, pool, court, seed_a, seed_b, winner, slot_a, slot_b } = data
 
-  // If match is finished, show read-only view
-  if (match.status === 'finished') {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-2xl mx-auto px-4 py-8">
-          <Link
-            href={`/tournaments/${match.tournament_id}`}
-            className="inline-flex items-center text-primary hover:underline mb-4"
-          >
-            <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Tournament
-          </Link>
+  // Extract game-by-game scores if available
+  const submittedGames = match_scores && match_scores.length > 0
+    ? match_scores[0].score_json?.games || []
+    : []
 
-          <Card>
-            <CardContent className="pt-6">
-              <h1 className="text-2xl font-bold mb-6">Match Complete</h1>
-
-              <div className="space-y-4">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-lg font-medium">{player_a?.name || 'BYE'}</p>
-                        {match.seed_a && <p className="text-sm text-muted-foreground">Seed #{match.seed_a}</p>}
-                      </div>
-                      {match.winner === match.slot_a && (
-                        <Badge className="bg-green-600">Winner</Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="text-center text-muted-foreground font-medium">vs</div>
-
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-lg font-medium">{player_b?.name || 'BYE'}</p>
-                        {match.seed_b && <p className="text-sm text-muted-foreground">Seed #{match.seed_b}</p>}
-                      </div>
-                      {match.winner === match.slot_b && (
-                        <Badge className="bg-green-600">Winner</Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
+  const gamesWonA = submittedGames.filter(g => g.a > g.b).length
+  const gamesWonB = submittedGames.filter(g => g.b > g.a).length
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Back Button */}
         <Link
-          href={`/tournaments/${match.tournament_id}`}
-          className="inline-flex items-center text-primary hover:underline mb-4"
+          href={`/tournaments/${tournament_id}`}
+          className="inline-flex items-center text-primary hover:underline mb-6"
         >
           <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -205,110 +93,142 @@ export default function MatchDetailPage() {
         </Link>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold">Round {match.round} Match</h1>
-              <Badge variant={match.status === 'live' ? 'default' : 'secondary'}>
-                {match.status}
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl">
+                Round {round} Match {pool && `- Pool ${pool}`}
+              </CardTitle>
+              <Badge
+                variant={status === 'completed' ? 'default' : status === 'live' ? 'destructive' : 'secondary'}
+                className={status === 'completed' ? 'bg-green-600' : ''}
+              >
+                {status}
               </Badge>
             </div>
+            {court && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Court {court}
+              </p>
+            )}
+          </CardHeader>
 
+          <CardContent>
             {/* Players */}
-            <div className="mb-8 space-y-4">
-              <Card>
+            <div className="space-y-6 mb-8">
+              {/* Player A */}
+              <Card className={winner === slot_a ? 'border-green-500 border-2' : ''}>
                 <CardContent className="pt-6">
-                  <p className="text-lg font-medium">{player_a?.name || 'BYE'}</p>
-                  {player_a?.dupr && (
-                    <p className="text-sm text-muted-foreground">DUPR: {player_a.dupr}</p>
-                  )}
-                  {match.seed_a && <p className="text-sm text-muted-foreground">Seed #{match.seed_a}</p>}
-                </CardContent>
-              </Card>
-
-              <div className="text-center text-muted-foreground font-medium">vs</div>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-lg font-medium">{player_b?.name || 'BYE'}</p>
-                  {player_b?.dupr && (
-                    <p className="text-sm text-muted-foreground">DUPR: {player_b.dupr}</p>
-                  )}
-                  {match.seed_b && <p className="text-sm text-muted-foreground">Seed #{match.seed_b}</p>}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Score Entry */}
-            <div className="border-t pt-6">
-              <h2 className="text-lg font-semibold mb-4">Enter Score (Best of 3)</h2>
-
-              <div className="space-y-3 mb-4">
-                {games.map((game, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <span className="text-sm font-medium w-16">
-                      Game {index + 1}:
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={game.a}
-                      onChange={(e) => handleScoreChange(index, 'a', e.target.value)}
-                      className="w-20"
-                      placeholder="0"
-                    />
-                    <span className="text-muted-foreground">-</span>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={game.b}
-                      onChange={(e) => handleScoreChange(index, 'b', e.target.value)}
-                      className="w-20"
-                      placeholder="0"
-                    />
-                    {games.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveGame(index)}
-                        className="ml-2 text-destructive hover:text-destructive"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </Button>
-                    )}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold">{player_a?.name || 'TBD'}</h3>
+                      <div className="flex gap-3 mt-2 text-sm text-muted-foreground">
+                        {player_a?.dupr && <span>DUPR: {player_a.dupr}</span>}
+                        {seed_a && <span>Seed #{seed_a}</span>}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {status === 'completed' && (
+                        <div className="text-3xl font-bold">{gamesWonA}</div>
+                      )}
+                      {winner === slot_a && (
+                        <Badge className="bg-green-600 mt-2">Winner</Badge>
+                      )}
+                    </div>
                   </div>
-                ))}
+                </CardContent>
+              </Card>
+
+              <div className="text-center">
+                <span className="text-lg font-medium text-muted-foreground">vs</span>
               </div>
 
-              {games.length < 3 && (
-                <Button
-                  variant="link"
-                  onClick={handleAddGame}
-                  className="mb-4 text-sm"
-                >
-                  + Add Game
-                </Button>
-              )}
-
-              <Button
-                onClick={handleSubmitScore}
-                disabled={submitting}
-                className="w-full bg-green-600 hover:bg-green-700"
-              >
-                {submitting ? 'Submitting...' : 'Submit Score'}
-              </Button>
+              {/* Player B */}
+              <Card className={winner === slot_b ? 'border-green-500 border-2' : ''}>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold">{player_b?.name || 'TBD'}</h3>
+                      <div className="flex gap-3 mt-2 text-sm text-muted-foreground">
+                        {player_b?.dupr && <span>DUPR: {player_b.dupr}</span>}
+                        {seed_b && <span>Seed #{seed_b}</span>}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {status === 'completed' && (
+                        <div className="text-3xl font-bold">{gamesWonB}</div>
+                      )}
+                      {winner === slot_b && (
+                        <Badge className="bg-green-600 mt-2">Winner</Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Game-by-Game Scores */}
+            {submittedGames.length > 0 && (
+              <div className="border-t pt-6">
+                <h2 className="text-lg font-semibold mb-4">Game Scores</h2>
+                <div className="space-y-3">
+                  {submittedGames.map((game, index) => {
+                    const isWinnerA = game.a > game.b
+                    return (
+                      <Card key={index} className="bg-gray-50">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-muted-foreground">
+                              Game {index + 1}
+                            </span>
+                            <div className="flex items-center gap-6">
+                              <div className={`text-3xl font-bold ${isWinnerA ? 'text-green-600' : 'text-gray-600'}`}>
+                                {game.a}
+                              </div>
+                              <span className="text-xl text-muted-foreground">-</span>
+                              <div className={`text-3xl font-bold ${!isWinnerA ? 'text-green-600' : 'text-gray-600'}`}>
+                                {game.b}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+
+                {/* Match Summary */}
+                <Card className="mt-6 bg-blue-50 border-blue-200">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-blue-900">
+                        Match Result
+                      </p>
+                      <p className="text-2xl font-bold text-blue-900">
+                        {gamesWonA} - {gamesWonB}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Match Not Yet Played */}
+            {status === 'scheduled' && submittedGames.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  This match has not been played yet.
+                </p>
+              </div>
+            )}
+
+            {/* Match In Progress */}
+            {status === 'live' && submittedGames.length === 0 && (
+              <div className="text-center py-8">
+                <Badge variant="destructive" className="text-lg px-4 py-2">
+                  Match in Progress
+                </Badge>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

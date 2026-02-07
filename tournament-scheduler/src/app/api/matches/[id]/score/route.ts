@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   // Update match with winner
   const { data: updatedMatch, error: matchUpdateError } = await supabase
     .from('matches')
-    .update({ winner, status: 'finished' })
+    .update({ winner, status: 'completed' })
     .eq('id', match_id)
     .select()
     .single()

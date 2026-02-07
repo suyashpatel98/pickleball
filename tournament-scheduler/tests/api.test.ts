@@ -400,7 +400,7 @@ describe('API Tests', () => {
 
       expect(response.status).toBe(200)
       const data = await response.json()
-      expect(data.status).toBe('finished')
+      expect(data.status).toBe('completed')
     })
 
     it('POST /api/matches/[id]/score - should return 400 for tie', async () => {
