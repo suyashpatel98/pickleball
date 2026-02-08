@@ -14,12 +14,25 @@ type TeamWithPlayers = Team & {
   player2?: Player | null
 }
 
+type GameScore = {
+  a: number
+  b: number
+}
+
+type MatchScore = {
+  score_json: {
+    games: GameScore[]
+    winner: string
+  }
+}
+
 type MatchWithTeams = Match & {
   team_a?: TeamWithPlayers | null
   team_b?: TeamWithPlayers | null
   player_a?: Player | null
   player_b?: Player | null
   court_id?: string | null
+  match_scores?: MatchScore[]
 }
 
 type Court = {
@@ -67,12 +80,26 @@ export default function TournamentFixtures({
 
     // For team matches, display team players
     if (!team) return 'TBD'
+
+    // Don't show if team name is just underscore or dash
+    if (team.team_name === '_' || team.team_name === '-') {
+      return 'TBD'
+    }
+
     const player1Name = team.player1?.name || 'Unknown'
     const player2Name = team.player2?.name || ''
+
+    // Don't show if player names are underscores or dashes
+    if (player1Name === '_' || player1Name === '-') {
+      return 'TBD'
+    }
+
     return (
       <div className="text-sm">
         <div className="font-medium">{player1Name}</div>
-        {player2Name && <div className="font-medium">{player2Name}</div>}
+        {player2Name && player2Name !== '_' && player2Name !== '-' && (
+          <div className="font-medium">{player2Name}</div>
+        )}
       </div>
     )
   }
@@ -270,29 +297,40 @@ export default function TournamentFixtures({
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     {/* Player/Team A */}
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {match.player_a ? `Player ID: ${match.slot_a?.slice(0, 8) || 'N/A'}` : `Team ID: ${match.team_a_id?.slice(0, 8) || 'N/A'}`}
-                      </div>
+                      {match.player_a && (
+                        <div className="text-xs text-muted-foreground mb-1">
+                          Player ID: {match.slot_a?.slice(0, 8) || 'N/A'}
+                        </div>
+                      )}
                       {getTeamDisplay(match.team_a, match.player_a)}
                     </div>
 
                     {/* Player/Team B */}
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {match.player_b ? `Player ID: ${match.slot_b?.slice(0, 8) || 'N/A'}` : `Team ID: ${match.team_b_id?.slice(0, 8) || 'N/A'}`}
-                      </div>
+                      {match.player_b && (
+                        <div className="text-xs text-muted-foreground mb-1">
+                          Player ID: {match.slot_b?.slice(0, 8) || 'N/A'}
+                        </div>
+                      )}
                       {getTeamDisplay(match.team_b, match.player_b)}
                     </div>
                   </div>
 
                   {/* Score or VS */}
                   <div className="flex items-center justify-center gap-4 mb-4">
-                    {match.status === 'completed' ? (
-                      <>
-                        <div className="text-2xl font-bold">{match.score_a ?? '-'}</div>
-                        <div className="text-muted-foreground">vs</div>
-                        <div className="text-2xl font-bold">{match.score_b ?? '-'}</div>
-                      </>
+                    {match.status === 'completed' && match.match_scores?.[0]?.score_json?.games ? (
+                      <div className="text-center">
+                        <div className="text-xs text-muted-foreground mb-1">Best of 3</div>
+                        <div className="flex gap-3 justify-center">
+                          {match.match_scores[0].score_json.games.map((game, idx) => (
+                            <div key={idx} className="text-sm">
+                              <span className={game.a > game.b ? 'font-bold text-green-600' : ''}>{game.a}</span>
+                              <span className="text-muted-foreground mx-1">-</span>
+                              <span className={game.b > game.a ? 'font-bold text-green-600' : ''}>{game.b}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ) : (
                       <div className="text-muted-foreground text-sm">vs</div>
                     )}
