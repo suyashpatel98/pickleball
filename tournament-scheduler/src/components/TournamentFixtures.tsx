@@ -244,7 +244,7 @@ export default function TournamentFixtures({
       {/* Header */}
       <div className="bg-[#2c3e50] text-white px-6 py-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Dinker's Pickleball Academy</h1>
+          <h1 className="text-xl font-bold">Dinkers Pickleball Academy</h1>
           <Link href={`/tournaments/${tournamentId}/manage`}>
             <Button variant="outline" size="sm" className="bg-white text-[#2c3e50] hover:bg-gray-100">
               Manage Tournament
@@ -485,14 +485,14 @@ export default function TournamentFixtures({
 
                     <div>
                       <h3 className="text-sm font-semibold text-muted-foreground mb-2">Organizer</h3>
-                      <p className="text-lg">Dinker's Pickleball Academy</p>
+                      <p className="text-lg">Dinkers Pickleball Academy</p>
                     </div>
                   </div>
 
                   <div className="pt-4 border-t">
                     <h3 className="text-sm font-semibold text-muted-foreground mb-3">About</h3>
                     <p className="text-gray-700 leading-relaxed">
-                      This knockout tournament is organized by Dinker's Pickleball Academy{location ? ` in ${location}` : ''}.
+                      This knockout tournament is organized by Dinkers Pickleball Academy{location ? ` in ${location}` : ''}.
                       The tournament features {matches.filter((m, i, arr) => arr.findIndex(m2 => m2.slot_a === m.slot_a || m2.slot_b === m.slot_a) === i).length} players
                       competing across {rounds.length} {rounds.length === 1 ? 'round' : 'rounds'}
                       in a single-elimination format. Each match is played as best of 3 games,

@@ -45,7 +45,12 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dinkers Pickleball Academy Tournaments</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold text-gray-900">Dinkers Pickleball Academy Tournaments</h1>
+            <Link href="/discover">
+              <Button variant="outline">Discover</Button>
+            </Link>
+          </div>
           <Button onClick={() => setIsModalOpen(true)}>
             Create Tournament
           </Button>
