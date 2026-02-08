@@ -719,4 +719,79 @@ describe('API Tests', () => {
       expect(data.matches_created).toBe(1)
     })
   })
+
+  describe('Player Personal View', () => {
+    it('GET /api/tournaments/[id]/players/[player_id] - should return player tournament data', async () => {
+      const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/players/${playerId}`)
+      expect(response.status).toBe(200)
+
+      const data = await response.json()
+      expect(data).toHaveProperty('tournament')
+      expect(data).toHaveProperty('player')
+      expect(data).toHaveProperty('status')
+      expect(data).toHaveProperty('next_match')
+      expect(data).toHaveProperty('match_history')
+      expect(data).toHaveProperty('stats')
+
+      expect(data.player.id).toBe(playerId)
+      expect(data.tournament.id).toBe(tournamentId)
+    })
+
+    it('GET /api/tournaments/[id]/players/[player_id] - should show active status with next match', async () => {
+      const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/players/${playerId}`)
+      const data = await response.json()
+
+      // Player should have a match (either active or in history)
+      expect(['active', 'waiting', 'eliminated', 'champion']).toContain(data.status)
+
+      if (data.status === 'active') {
+        expect(data.next_match).not.toBeNull()
+        expect(data.next_match).toHaveProperty('opponent')
+        expect(data.next_match).toHaveProperty('court')
+        expect(data.next_match).toHaveProperty('round')
+      }
+    })
+
+    it('GET /api/tournaments/[id]/players/[player_id] - should show match history after completion', async () => {
+      // Complete the first match
+      await fetch(`${BASE_URL}/api/matches/${matchId}/score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          games: [{ a: 11, b: 8 }, { a: 11, b: 9 }],
+          winner: playerId,
+        }),
+      })
+
+      // Check player view
+      const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/players/${playerId}`)
+      const data = await response.json()
+
+      expect(data.match_history.length).toBeGreaterThan(0)
+      expect(data.stats.total_matches).toBeGreaterThan(0)
+      expect(data.match_history[0]).toHaveProperty('opponent')
+      expect(data.match_history[0]).toHaveProperty('result')
+      expect(['won', 'lost']).toContain(data.match_history[0].result)
+    })
+
+    it('GET /api/tournaments/[id]/players/[player_id] - should return 404 for invalid player', async () => {
+      const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/players/00000000-0000-0000-0000-000000000000`)
+      expect(response.status).toBe(404)
+    })
+
+    it('GET /api/tournaments/[id]/players/[player_id] - should return 404 for invalid tournament', async () => {
+      const response = await fetch(`${BASE_URL}/api/tournaments/00000000-0000-0000-0000-000000000000/players/${playerId}`)
+      expect(response.status).toBe(404)
+    })
+
+    it('GET /api/tournaments/[id]/players/[player_id] - should track stats correctly', async () => {
+      const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/players/${playerId}`)
+      const data = await response.json()
+
+      expect(data.stats).toHaveProperty('wins')
+      expect(data.stats).toHaveProperty('losses')
+      expect(data.stats).toHaveProperty('total_matches')
+      expect(data.stats.wins + data.stats.losses).toBe(data.stats.total_matches)
+    })
+  })
 })
