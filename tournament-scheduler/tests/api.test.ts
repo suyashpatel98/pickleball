@@ -793,5 +793,19 @@ describe('API Tests', () => {
       expect(data.stats).toHaveProperty('total_matches')
       expect(data.stats.wins + data.stats.losses).toBe(data.stats.total_matches)
     })
+
+    it('GET /api/tournaments/[id]/players/[player_id] - should include time estimates for next match', async () => {
+      const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/players/${playerId}`)
+      const data = await response.json()
+
+      if (data.status === 'active' && data.next_match) {
+        expect(data.next_match).toHaveProperty('estimate')
+        expect(data.next_match.estimate).toHaveProperty('start_time')
+        expect(data.next_match.estimate).toHaveProperty('minutes_until_start')
+        expect(data.next_match.estimate).toHaveProperty('matches_ahead')
+        expect(typeof data.next_match.estimate.minutes_until_start).toBe('number')
+        expect(data.next_match.estimate.matches_ahead).toBeGreaterThanOrEqual(0)
+      }
+    })
   })
 })

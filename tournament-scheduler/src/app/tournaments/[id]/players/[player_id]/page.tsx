@@ -28,12 +28,19 @@ type MatchHistoryItem = {
   score_b: number | null
 }
 
+type MatchEstimate = {
+  start_time: string
+  minutes_until_start: number
+  matches_ahead: number
+}
+
 type NextMatch = {
   id: string
   round: number
   opponent: Player | TeamWithPlayers | null
   court: Court | null
   pool?: string | null
+  estimate?: MatchEstimate
 }
 
 type PlayerData = {
@@ -47,6 +54,23 @@ type PlayerData = {
     losses: number
     total_matches: number
   }
+}
+
+function formatEstimatedTime(timeString: string): string {
+  const time = new Date(timeString)
+  return time.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  })
+}
+
+function getTimeUntilMessage(minutes: number): string {
+  if (minutes < 5) return 'Starting soon!'
+  if (minutes < 60) return `in ${minutes} minutes`
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return `in ${hours}h ${mins}m`
 }
 
 export default function PlayerPersonalView() {
@@ -211,6 +235,24 @@ export default function PlayerPersonalView() {
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
+                {/* Estimated Time */}
+                {data.next_match.estimate && (
+                  <div className="bg-blue-600 text-white p-4 rounded-lg text-center">
+                    <p className="text-sm opacity-90 mb-1">Estimated Start Time</p>
+                    <p className="text-3xl font-bold">
+                      {formatEstimatedTime(data.next_match.estimate.start_time)}
+                    </p>
+                    <p className="text-sm mt-2">
+                      {getTimeUntilMessage(data.next_match.estimate.minutes_until_start)}
+                    </p>
+                    {data.next_match.estimate.matches_ahead > 0 && (
+                      <p className="text-xs mt-3 opacity-80">
+                        ℹ️ {data.next_match.estimate.matches_ahead} match{data.next_match.estimate.matches_ahead > 1 ? 'es' : ''} ahead of you on this court
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Opponent */}
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground mb-2">You will play against</p>

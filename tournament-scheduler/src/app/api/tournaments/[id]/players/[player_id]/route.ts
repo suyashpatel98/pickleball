@@ -1,6 +1,56 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase/server'
 
+interface MatchEstimate {
+  estimated_start_time: Date
+  minutes_until_start: number
+  matches_ahead: number
+  estimated_wait_minutes: number
+}
+
+async function estimateMatchStartTime(
+  match: any,
+  supabase: any
+): Promise<MatchEstimate | null> {
+  if (!match || !match.court_id) {
+    return null
+  }
+
+  const now = new Date()
+
+  // Get all scheduled/live matches on the same court that are ahead of this match
+  // "Ahead" means: lower round number, OR same round but created earlier
+  const { data: matchesAhead, error } = await supabase
+    .from('matches')
+    .select('id, round, created_at, status')
+    .eq('court_id', match.court_id)
+    .in('status', ['scheduled', 'live'])
+    .or(`round.lt.${match.round},and(round.eq.${match.round},created_at.lt.${match.created_at})`)
+
+  if (error) {
+    console.error('Error fetching matches ahead:', error)
+    return null
+  }
+
+  // Tournament settings (hardcoded for now)
+  const AVG_MATCH_DURATION_MINUTES = 25
+  const BUFFER_BETWEEN_MATCHES_MINUTES = 5
+  const TOTAL_TIME_PER_MATCH = AVG_MATCH_DURATION_MINUTES + BUFFER_BETWEEN_MATCHES_MINUTES
+
+  const matchesAheadCount = matchesAhead?.length || 0
+  const estimatedWaitMinutes = matchesAheadCount * TOTAL_TIME_PER_MATCH
+
+  const estimatedStartTime = new Date(now.getTime() + estimatedWaitMinutes * 60000)
+  const minutesUntilStart = Math.max(0, Math.floor((estimatedStartTime.getTime() - now.getTime()) / 60000))
+
+  return {
+    estimated_start_time: estimatedStartTime,
+    minutes_until_start: minutesUntilStart,
+    matches_ahead: matchesAheadCount,
+    estimated_wait_minutes: estimatedWaitMinutes
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string; player_id: string }> }
@@ -234,11 +284,27 @@ export async function GET(
       }
     }
 
+    // Add time estimate to next match
+    let nextMatchWithEstimate: any = nextMatchInfo
+    if (nextMatchInfo && nextMatch) {
+      const estimate = await estimateMatchStartTime(nextMatch, supabase)
+      if (estimate) {
+        nextMatchWithEstimate = {
+          ...nextMatchInfo,
+          estimate: {
+            start_time: estimate.estimated_start_time,
+            minutes_until_start: estimate.minutes_until_start,
+            matches_ahead: estimate.matches_ahead
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       tournament,
       player,
       status,
-      next_match: nextMatchInfo,
+      next_match: nextMatchWithEstimate,
       match_history: matchHistory,
       stats: {
         wins,

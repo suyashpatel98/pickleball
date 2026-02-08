@@ -8,7 +8,7 @@
 
 ---
 
-## ✅ Already Built (90% Complete)
+## ✅ Already Built (Complete)
 
 ### 1. Director View (`/tournaments/{id}/manage`)
 - ✅ Court management (create, edit, delete)
@@ -42,285 +42,383 @@
 **Demo Script:**
 > "Anyone can view the tournament publicly - parents, friends, other players. They can see live scores, brackets, and standings. No login required."
 
----
-
-## 🚧 Need to Build (10% Remaining)
-
 ### 4. Player Personal View (`/tournaments/{id}/players/{player_id}`)
-
-**Priority:** HIGH - This is the missing piece for demo
-
-**What to Build:**
-
-#### Page: `/src/app/tournaments/[id]/players/[player_id]/page.tsx`
-
-**Features to Include:**
-
-1. **Player Header**
-   - Player name
-   - Tournament name
-   - Status: "✅ Active", "⏸️ Waiting", "🏆 Champion", or "❌ Eliminated"
-
-2. **Next Match Section** (if active)
-   - "Your Next Match"
-   - Opponent name(s)
-   - Court assignment (e.g., "Court 2")
-   - Match time/round
-   - Big "View Court" button → links to `/courts/{court_id}`
-
-3. **Match History**
-   - List of completed matches
-   - Score display
-   - Result (Won/Lost)
-   - Round indicator
-
-4. **Tournament Progress**
-   - Current round
-   - Player's path through bracket (highlighted)
-   - "You are here" indicator
-
-5. **If Eliminated**
-   - Show who eliminated them
-   - Show that player's progress
-   - "Follow Tournament" button → spectator view
-
-**API Needed:**
-```
-GET /api/tournaments/[id]/players/[player_id]
-
-Response:
-{
-  player: { id, name, tournament_id },
-  status: "active" | "waiting" | "eliminated" | "champion",
-  next_match: { id, opponent, court, round } | null,
-  match_history: [{ id, opponent, score, result, round }],
-  stats: { wins, losses, games_won, games_lost }
-}
-```
-
-**Implementation Time:** ~2-3 hours
+- ✅ Player header with status badges
+- ✅ Next match display with opponent and court
+- ✅ Match history with results
+- ✅ Win/loss statistics
+- ✅ Auto-refresh every 30 seconds
+- ✅ Mobile-responsive design
 
 **Demo Script:**
 > "Each player gets a personalized URL they can bookmark. They see their next match, opponent, and which court to go to. After each match, they see results and what's coming next. No login needed - the URL itself grants access."
 
 ---
 
-## 🎬 Demo Preparation Checklist
+## 🚧 Enhancement: Estimated Match Start Times
 
-### Technical Setup
-- [ ] Build player personal view page
-- [ ] Create player API endpoint
-- [ ] Test all 4 views with sample data
-- [ ] Seed database with realistic tournament
-- [ ] Verify mobile responsiveness (test on phone)
-- [ ] Check all views update after scoring
+**Status:** PLANNED - Customer Requested Feature
 
-### Demo Data
-- [ ] Create tournament: "Pickleball Demo Tournament"
-- [ ] Add 8 players with realistic names
-- [ ] Create 2 courts: "Court 1", "Court 2"
-- [ ] Generate bracket (4 first-round matches)
-- [ ] Complete 2 matches (show progression)
-- [ ] Leave 2 matches active (show live scoring)
+**Goal:** Show players when their match is estimated to start, not just which round.
 
-### Demo Materials
-- [ ] Prepare 4 URLs on separate browser tabs
-- [ ] Have QR codes ready for court URLs
-- [ ] Screenshot each view for backup
-- [ ] Write demo script with transitions
-- [ ] Test end-to-end flow (5-minute rehearsal)
+**Approach:** Simple Queue-Based Estimate (2-3 hours implementation)
 
----
+### Problem
+Currently players see:
+```
+Your Next Match
+Opponent: John Doe
+Court: Court 2
+Round: 2
+```
 
-## 🎭 Demo Flow (Recommended Order)
+But they don't know **when** their match will start. Is it in 10 minutes or 2 hours?
 
-### 1. Start with Problem (1 min)
-"Running a tournament today means clipboards, paper brackets, and constantly updating whiteboards. Players don't know when they play, referees are confused about matches, and spectators can't follow along."
+### Solution
+Show estimated start time based on queue:
+```
+Your Next Match
+Opponent: John Doe
+Court: Court 2
+Estimated Start: 2:45 PM (in 35 minutes)
 
-### 2. Director View (2 min)
-- Show creating courts
-- Show tournament overview
-- Show advancing rounds
-- Emphasize: "One dashboard to control everything"
+ℹ️ 2 matches ahead of you on this court
+```
 
-### 3. Referee View (2 min)
-- Show scoring interface
-- Complete a match
-- Show next match auto-loading
-- Emphasize: "Simple, one URL per court, works on any device"
+### How It Works
 
-### 4. Player View (2 min)
-- Show personalized dashboard
-- Show next match details
-- Show match history
-- Emphasize: "Every player knows exactly when and where they play"
+1. **Count matches ahead** on the same court
+2. **Estimate duration**: Assume each match takes 25 minutes + 5 min buffer = 30 min total
+3. **Calculate start time**: Current time + (matches_ahead × 30 minutes)
+4. **Show countdown**: "in 35 minutes" or "starting soon!"
 
-### 5. Spectator View (2 min)
-- Show live brackets
-- Show different view modes
-- Show standings
-- Emphasize: "Anyone can follow along in real-time"
+### Implementation Plan
 
-### 6. Tie it Together (1 min)
-"Four different experiences, one platform. No apps to download, just open a link."
+#### Step 1: Add Estimation Logic to Player API
 
----
+**File**: `/src/app/api/tournaments/[id]/players/[player_id]/route.ts`
 
-## 🚀 Post-Demo: Transition to Full Product
-
-After successful demo, explain next steps:
-
-### What's Missing (Authentication Phase 0.5)
-- "Right now this is a single tournament demo"
-- "For production, we need:"
-  - Director accounts (you sign up, manage YOUR tournaments)
-  - Multi-tenancy (your data stays private)
-  - Player tokens (secure access to personal views)
-  - Discovery page (public tournament browsing)
-
-### Timeline
-- "We can have the full authenticated version ready in 2-3 weeks"
-- "Then you can start using it for real tournaments"
-
----
-
-## 📝 Technical Notes
-
-### No Authentication = Simplified Demo
-For the demo, anyone with the URL can access any view. This is FINE because:
-- It's a controlled demo environment
-- Makes it easy to show all perspectives
-- Matches the final architecture (just without auth layer)
-
-### After Demo: Add Auth Layer
-The URL structure stays the same, just add:
-- `/tournaments/{id}/manage` → requires director login
-- `/tournaments/{id}/players/{token}` → validates token (UUID, not player_id)
-- `/courts/{id}` → optional PIN protection
-- `/tournaments/{id}` → stays public
-
-### Data Isolation
-Demo uses single database. Production will use:
-- Row-Level Security (RLS) in Supabase
-- `created_by` column to filter tournaments
-- Token validation for player access
-
----
-
-## ⚡ Quick Implementation Guide
-
-### Build Player View (Step by Step)
-
-1. **Create API Route** (`/src/app/api/tournaments/[id]/players/[player_id]/route.ts`)
+**Add function** (before the main GET handler):
 ```typescript
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string; player_id: string } }
-) {
-  const { id: tournament_id, player_id } = params
+interface MatchEstimate {
+  estimated_start_time: Date
+  minutes_until_start: number
+  matches_ahead: number
+  estimated_wait_minutes: number
+}
 
-  // Get player info
-  const { data: player } = await supabase
-    .from('players')
-    .select('*')
-    .eq('id', player_id)
-    .single()
+async function estimateMatchStartTime(
+  match: any,
+  supabase: any
+): Promise<MatchEstimate | null> {
+  if (!match || !match.court_id) {
+    return null
+  }
 
-  // Get matches where player participated
-  const { data: matches } = await supabase
+  const now = new Date()
+
+  // Get all scheduled/live matches on the same court that are ahead of this match
+  // "Ahead" means: lower round number, OR same round but created earlier
+  const { data: matchesAhead, error } = await supabase
     .from('matches')
-    .select('*, player_a(*), player_b(*)')
-    .eq('tournament_id', tournament_id)
-    .or(`slot_a.eq.${player_id},slot_b.eq.${player_id}`)
-    .order('round', { ascending: true })
+    .select('id, round, created_at, status')
+    .eq('court_id', match.court_id)
+    .in('status', ['scheduled', 'live'])
+    .or(`round.lt.${match.round},and(round.eq.${match.round},created_at.lt.${match.created_at})`)
 
-  // Find next match (not completed)
-  const nextMatch = matches.find(m =>
-    m.status !== 'completed' && m.status !== 'finished'
-  )
+  if (error) {
+    console.error('Error fetching matches ahead:', error)
+    return null
+  }
 
-  // Calculate stats
-  const completedMatches = matches.filter(m =>
-    m.status === 'completed' || m.status === 'finished'
-  )
-  const wins = completedMatches.filter(m => m.winner === player_id).length
-  const losses = completedMatches.length - wins
+  // Tournament settings (hardcoded for now)
+  const AVG_MATCH_DURATION_MINUTES = 25
+  const BUFFER_BETWEEN_MATCHES_MINUTES = 5
+  const TOTAL_TIME_PER_MATCH = AVG_MATCH_DURATION_MINUTES + BUFFER_BETWEEN_MATCHES_MINUTES
 
-  return NextResponse.json({
-    player,
-    status: nextMatch ? 'active' : (wins > 0 ? 'eliminated' : 'waiting'),
-    next_match: nextMatch,
-    match_history: completedMatches,
-    stats: { wins, losses }
+  const matchesAheadCount = matchesAhead?.length || 0
+  const estimatedWaitMinutes = matchesAheadCount * TOTAL_TIME_PER_MATCH
+
+  const estimatedStartTime = new Date(now.getTime() + estimatedWaitMinutes * 60000)
+  const minutesUntilStart = Math.max(0, Math.floor((estimatedStartTime.getTime() - now.getTime()) / 60000))
+
+  return {
+    estimated_start_time: estimatedStartTime,
+    minutes_until_start: minutesUntilStart,
+    matches_ahead: matchesAheadCount,
+    estimated_wait_minutes: estimatedWaitMinutes
+  }
+}
+```
+
+**Modify the response** (in the main GET handler, before returning):
+```typescript
+// Before the return NextResponse.json() call, add:
+
+// Add time estimate to next match
+let nextMatchWithEstimate = nextMatchInfo
+if (nextMatchInfo) {
+  const estimate = await estimateMatchStartTime(nextMatch, supabase)
+  if (estimate) {
+    nextMatchWithEstimate = {
+      ...nextMatchInfo,
+      estimate: {
+        start_time: estimate.estimated_start_time,
+        minutes_until_start: estimate.minutes_until_start,
+        matches_ahead: estimate.matches_ahead
+      }
+    }
+  }
+}
+
+// Then update the return statement to use nextMatchWithEstimate instead of nextMatchInfo
+return NextResponse.json({
+  tournament,
+  player,
+  status,
+  next_match: nextMatchWithEstimate,  // Changed from nextMatchInfo
+  match_history: matchHistory,
+  stats: {
+    wins,
+    losses,
+    total_matches: completedMatches.length,
+  },
+})
+```
+
+#### Step 2: Update Player View UI
+
+**File**: `/src/app/tournaments/[id]/players/[player_id]/page.tsx`
+
+**Update types** (add to the type definitions at the top):
+```typescript
+type MatchEstimate = {
+  start_time: string
+  minutes_until_start: number
+  matches_ahead: number
+}
+
+type NextMatch = {
+  id: string
+  round: number
+  opponent: Player | TeamWithPlayers | null
+  court: Court | null
+  pool?: string | null
+  estimate?: MatchEstimate  // Add this
+}
+```
+
+**Add helper function** (before the component):
+```typescript
+function formatEstimatedTime(timeString: string): string {
+  const time = new Date(timeString)
+  return time.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
   })
 }
-```
 
-2. **Create Page Component** (`/src/app/tournaments/[id]/players/[player_id]/page.tsx`)
-```typescript
-export default async function PlayerPersonalView({
-  params
-}: {
-  params: { id: string; player_id: string }
-}) {
-  const data = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/tournaments/${params.id}/players/${params.player_id}`
-  ).then(res => res.json())
-
-  return (
-    <div className="container mx-auto p-4 max-w-2xl">
-      <PlayerHeader player={data.player} status={data.status} />
-
-      {data.next_match && (
-        <NextMatchCard match={data.next_match} />
-      )}
-
-      <MatchHistory matches={data.match_history} />
-
-      <PlayerStats stats={data.stats} />
-    </div>
-  )
+function getTimeUntilMessage(minutes: number): string {
+  if (minutes < 5) return 'Starting soon!'
+  if (minutes < 60) return `in ${minutes} minutes`
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return `in ${hours}h ${mins}m`
 }
 ```
 
-3. **Test with URL**
+**Update the "Next Match" section UI** (replace the existing next match card):
+```tsx
+{data.status === 'active' && data.next_match && (
+  <Card className="mt-4 border-2 border-green-500">
+    <CardHeader className="bg-green-50">
+      <div className="flex items-center justify-between">
+        <CardTitle className="text-green-900">Your Next Match</CardTitle>
+        <Badge className="bg-green-600">Up Next</Badge>
+      </div>
+    </CardHeader>
+    <CardContent className="pt-6">
+      <div className="space-y-4">
+        {/* Estimated Time - NEW */}
+        {data.next_match.estimate && (
+          <div className="bg-blue-600 text-white p-4 rounded-lg text-center">
+            <p className="text-sm opacity-90 mb-1">Estimated Start Time</p>
+            <p className="text-3xl font-bold">
+              {formatEstimatedTime(data.next_match.estimate.start_time)}
+            </p>
+            <p className="text-sm mt-2">
+              {getTimeUntilMessage(data.next_match.estimate.minutes_until_start)}
+            </p>
+            {data.next_match.estimate.matches_ahead > 0 && (
+              <p className="text-xs mt-3 opacity-80">
+                ℹ️ {data.next_match.estimate.matches_ahead} match{data.next_match.estimate.matches_ahead > 1 ? 'es' : ''} ahead of you on this court
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Opponent */}
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground mb-2">You will play against</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {getOpponentName(data.next_match.opponent)}
+          </p>
+          {data.next_match.pool && (
+            <p className="text-sm text-muted-foreground mt-2">Pool {data.next_match.pool}</p>
+          )}
+        </div>
+
+        {/* Court Info */}
+        {data.next_match.court && (
+          <div className="bg-blue-50 p-4 rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-1">Report to</p>
+            <p className="text-xl font-bold text-blue-900">
+              {data.next_match.court.name}
+            </p>
+            {data.next_match.court.location_notes && (
+              <p className="text-sm text-blue-700 mt-1">
+                {data.next_match.court.location_notes}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Round */}
+        <div className="text-center">
+          <Badge variant="outline" className="text-base px-4 py-1">
+            Round {data.next_match.round}
+          </Badge>
+        </div>
+
+        {/* View Court Button */}
+        {data.next_match.court && (
+          <Button
+            onClick={() => router.push(`/courts/${data.next_match!.court!.id}`)}
+            className="w-full bg-green-600 hover:bg-green-700 text-lg py-6"
+          >
+            View Court & Live Score
+          </Button>
+        )}
+      </div>
+    </CardContent>
+  </Card>
+)}
 ```
-http://localhost:3000/tournaments/123/players/abc-player-id
+
+#### Step 3: Add Tests
+
+**File**: `/tests/api.test.ts`
+
+**Add new test** (in the "Player Personal View" describe block):
+```typescript
+it('GET /api/tournaments/[id]/players/[player_id] - should include time estimates for next match', async () => {
+  const response = await fetch(`${BASE_URL}/api/tournaments/${tournamentId}/players/${playerId}`)
+  const data = await response.json()
+
+  if (data.status === 'active' && data.next_match) {
+    expect(data.next_match).toHaveProperty('estimate')
+    expect(data.next_match.estimate).toHaveProperty('start_time')
+    expect(data.next_match.estimate).toHaveProperty('minutes_until_start')
+    expect(data.next_match.estimate).toHaveProperty('matches_ahead')
+    expect(typeof data.next_match.estimate.minutes_until_start).toBe('number')
+    expect(data.next_match.estimate.matches_ahead).toBeGreaterThanOrEqual(0)
+  }
+})
 ```
 
+### Success Criteria
+
+- [ ] Player API returns `estimate` object with next match
+- [ ] UI shows estimated start time (e.g., "2:45 PM")
+- [ ] UI shows countdown (e.g., "in 35 minutes")
+- [ ] UI shows matches ahead count (e.g., "2 matches ahead")
+- [ ] Estimates update on page refresh/auto-refresh
+- [ ] No errors when no matches ahead (shows "Starting soon!")
+- [ ] Build succeeds with no TypeScript errors
+- [ ] Test passes
+
+### Configuration (Hardcoded for Demo)
+
+```typescript
+const AVG_MATCH_DURATION_MINUTES = 25  // Average pickleball match
+const BUFFER_BETWEEN_MATCHES_MINUTES = 5  // Time to clear court and set up
+```
+
+**Later** (Phase 5): Move these to tournament settings table so directors can customize.
+
+### Limitations (Acceptable for Demo)
+
+⚠️ **Not Real-Time**: Estimates don't update if matches finish faster/slower than expected
+- Solution: Auto-refresh every 30 seconds (already implemented)
+
+⚠️ **Fixed Duration**: Assumes all matches take 25 minutes
+- Solution: Track actual durations later (Phase 5)
+
+⚠️ **No Court Delays**: Doesn't account for breaks, maintenance, disputes
+- Solution: Add manual delay adjustments (Phase 5)
+
+⚠️ **Queue Only**: Doesn't use actual scheduled timestamps
+- Solution: Implement full scheduling system (Phase 5 - Optimal Scheduling)
+
+### Demo Talking Points
+
+**When showing player view:**
+> "Notice the estimated start time? This is calculated by looking at how many matches are ahead of this player on their assigned court. If there are 2 matches ahead and each match takes about 25 minutes, we show 'Starting in approximately 50 minutes'. This helps players plan when to warm up and be ready."
+
+> "The estimate updates automatically every 30 seconds as matches complete, so players always have current information."
+
+> "In the full version, we'll track actual match durations and adjust estimates in real-time for even better accuracy."
+
+### Implementation Time
+
+**Estimated**: 2-3 hours
+- API logic: 45 minutes
+- UI updates: 1 hour
+- Testing: 30 minutes
+- Bug fixes: 30 minutes
+
+### Files Modified
+
+1. `/src/app/api/tournaments/[id]/players/[player_id]/route.ts` - Add estimation logic
+2. `/src/app/tournaments/[id]/players/[player_id]/page.tsx` - Update UI
+3. `/tests/api.test.ts` - Add test case
+
+### Dependencies
+
+- ✅ Player personal view (already built)
+- ✅ Court assignments (already working)
+- ✅ Match status tracking (already implemented)
+
+### Future Enhancements (Not in Demo)
+
+These would be Phase 5 features:
+- Track actual match durations
+- Learn average duration per tournament
+- Allow directors to set custom durations
+- Real-time estimate updates (WebSocket)
+- Notifications when match is 15 minutes away
+- Adjust for live delays/breaks
+
 ---
 
-## ✅ Success Criteria
+## 🎯 Demo Status
 
-Demo is ready when:
-- [ ] All 4 views work on localhost
-- [ ] Can score a match in referee view → see it update in spectator view
-- [ ] Can advance round in director view → see next matches appear
-- [ ] Player view shows correct next match and history
-- [ ] Mobile responsive (test on phone)
-- [ ] Can run through demo in 10 minutes
-- [ ] No errors in console
-- [ ] Data is realistic and professional
+### Completed ✅
+1. Director View
+2. Referee View
+3. Spectator View
+4. Player Personal View
 
----
+### Planned (Customer Request) 🚧
+5. Estimated Match Start Times (2-3 hours)
 
-## 🎯 Bottom Line
-
-**You're 90% done.** Just build the player personal view (~2-3 hours) and you have a complete demo.
-
-**No need for:**
-- ❌ Runtime config
-- ❌ Authentication
-- ❌ Multi-tenancy
-- ❌ Backend permission changes
-
-**Just use:**
-- ✅ Different URLs for different views
-- ✅ Open multiple browser tabs
-- ✅ Show customer the full experience
-
-After the demo succeeds, THEN implement Phase 0.5 for production.
+### Future (Not for Demo) ❌
+- Authentication & Multi-Tenancy (Phase 0.5)
+- Real-time updates via WebSocket (Phase 1)
+- Notifications (Phase 3)
+- Optimal scheduling algorithm (Phase 5)
 
 ---
 
-**Last Updated:** 2026-02-07
+**Last Updated:** 2026-02-07 (Added Estimated Start Times plan)
