@@ -15,10 +15,17 @@ type MatchWithTeams = Match & {
   team_b?: TeamWithPlayers | null
 }
 
+type Court = {
+  id: string
+  name: string
+  location_notes?: string
+}
+
 type TournamentData = {
   tournament: Tournament
   matches: MatchWithTeams[]
   teams: TeamWithPlayers[]
+  courts: Court[]
 }
 
 export default function TournamentDetailPage() {
@@ -70,6 +77,7 @@ export default function TournamentDetailPage() {
       tournamentName={data.tournament.name}
       location={data.tournament.location}
       tournamentId={id}
+      courts={data.courts}
     />
   )
 }

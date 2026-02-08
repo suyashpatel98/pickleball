@@ -74,10 +74,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: teamsError.message }, { status: 500 })
   }
 
+  // Fetch courts for this tournament
+  const { data: courts, error: courtsError } = await supabase
+    .from('courts')
+    .select('*')
+    .eq('tournament_id', id)
+    .order('name', { ascending: true })
+
+  if (courtsError) {
+    return NextResponse.json({ error: courtsError.message }, { status: 500 })
+  }
+
   return NextResponse.json({
     tournament,
     registrations,
     matches,
     teams: teams || [],
+    courts: courts || [],
   })
 }

@@ -19,6 +19,13 @@ type MatchWithTeams = Match & {
   team_b?: TeamWithPlayers | null
   player_a?: Player | null
   player_b?: Player | null
+  court_id?: string | null
+}
+
+type Court = {
+  id: string
+  name: string
+  location_notes?: string
 }
 
 interface TournamentFixturesProps {
@@ -26,18 +33,17 @@ interface TournamentFixturesProps {
   tournamentName: string
   location?: string
   tournamentId: string
+  courts: Court[]
 }
 
 export default function TournamentFixtures({
   matches,
   tournamentName,
   location,
-  tournamentId
+  tournamentId,
+  courts
 }: TournamentFixturesProps) {
-  const [selectedTab, setSelectedTab] = useState<'fixtures' | 'standings' | 'table' | 'stats' | 'details'>('fixtures')
-  const [formatView, setFormatView] = useState<'round-robin' | 'knockouts'>('round-robin')
-  const [viewMode, setViewMode] = useState<'court-wise' | 'pool-wise' | 'status-wise'>('pool-wise')
-  const [selectedPool, setSelectedPool] = useState<string>('A')
+  const [selectedTab, setSelectedTab] = useState<'fixtures' | 'standings' | 'details'>('fixtures')
   const [selectedRound, setSelectedRound] = useState<number>(1)
 
   // Get unique pools and rounds
@@ -46,15 +52,6 @@ export default function TournamentFixtures({
 
   // Filter matches based on current selections
   const filteredMatches = matches.filter(match => {
-    if (viewMode === 'pool-wise' && selectedPool) {
-      return match.pool === selectedPool && match.round === selectedRound
-    }
-    if (viewMode === 'court-wise' && match.court) {
-      return match.round === selectedRound
-    }
-    if (viewMode === 'status-wise') {
-      return match.round === selectedRound
-    }
     return match.round === selectedRound
   })
 
@@ -88,6 +85,13 @@ export default function TournamentFixtures({
 
     // For team matches, return team name
     if (!team) return 'TBD'
+
+    // If team_name is just underscores or dashes, use player names
+    const teamName = team.team_name
+    if (teamName && teamName.trim() !== '' && teamName !== '_' && teamName !== '-') {
+      return teamName
+    }
+
     const player1Name = team.player1?.name || 'Unknown'
     const player2Name = team.player2?.name || ''
     return player2Name ? `${player1Name} / ${player2Name}` : player1Name
@@ -235,8 +239,6 @@ export default function TournamentFixtures({
             <TabsList>
               <TabsTrigger value="fixtures">Fixtures</TabsTrigger>
               <TabsTrigger value="standings">Standings</TabsTrigger>
-              <TabsTrigger value="table">Table</TabsTrigger>
-              <TabsTrigger value="stats">Stats</TabsTrigger>
               <TabsTrigger value="details">Details</TabsTrigger>
             </TabsList>
           </div>
@@ -244,22 +246,6 @@ export default function TournamentFixtures({
 
         <TabsContent value="fixtures">
           <div className="max-w-7xl mx-auto px-6 py-6">
-          {/* Format Selection */}
-          <div className="flex justify-center gap-4 mb-6">
-            <Button
-              variant={formatView === 'round-robin' ? 'default' : 'outline'}
-              onClick={() => setFormatView('round-robin')}
-            >
-              Round Robin
-            </Button>
-            <Button
-              variant={formatView === 'knockouts' ? 'default' : 'outline'}
-              onClick={() => setFormatView('knockouts')}
-            >
-              Knockouts
-            </Button>
-          </div>
-
           {/* Round Navigation */}
           <div className="flex justify-center gap-2 mb-6 flex-wrap">
             {rounds.map((round) => (
@@ -273,36 +259,6 @@ export default function TournamentFixtures({
               </Button>
             ))}
           </div>
-
-          {/* View Mode Selection */}
-          <div className="flex justify-center gap-4 mb-6">
-            {(['court-wise', 'pool-wise', 'status-wise'] as const).map((mode) => (
-              <Button
-                key={mode}
-                variant={viewMode === mode ? 'default' : 'secondary'}
-                onClick={() => setViewMode(mode)}
-              >
-                {mode.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-')}
-              </Button>
-            ))}
-          </div>
-
-          {/* Pool Selection (only for pool-wise view) */}
-          {viewMode === 'pool-wise' && pools.length > 0 && (
-            <div className="flex justify-center gap-2 mb-6">
-              {pools.map((pool) => (
-                <Button
-                  key={pool}
-                  variant={selectedPool === pool ? 'default' : 'outline'}
-                  size="icon"
-                  onClick={() => setSelectedPool(pool)}
-                  className={selectedPool === pool ? 'bg-gray-800 hover:bg-gray-900' : ''}
-                >
-                  {pool}
-                </Button>
-              ))}
-            </div>
-          )}
 
           {/* Match Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -329,18 +285,23 @@ export default function TournamentFixtures({
                     </div>
                   </div>
 
-                  {/* Score */}
+                  {/* Score or VS */}
                   <div className="flex items-center justify-center gap-4 mb-4">
-                    <div className="text-2xl font-bold">{match.score_a ?? '-'}</div>
-                    <div className="text-muted-foreground">vs</div>
-                    <div className="text-2xl font-bold">{match.score_b ?? '-'}</div>
+                    {match.status === 'completed' ? (
+                      <>
+                        <div className="text-2xl font-bold">{match.score_a ?? '-'}</div>
+                        <div className="text-muted-foreground">vs</div>
+                        <div className="text-2xl font-bold">{match.score_b ?? '-'}</div>
+                      </>
+                    ) : (
+                      <div className="text-muted-foreground text-sm">vs</div>
+                    )}
                   </div>
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between text-xs mb-4">
-                    <div className="text-primary">
-                      {match.pool && `Pool: ${match.pool}`}
-                      {match.court && ` | Court ${match.court}`}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="text-primary font-medium">
+                      {match.court_id && courts.find(c => c.id === match.court_id)?.name}
                     </div>
                     <Badge
                       variant={
@@ -353,17 +314,6 @@ export default function TournamentFixtures({
                       {match.status === 'completed' ? 'Completed' : match.status}
                     </Badge>
                   </div>
-
-                  {/* Action Button */}
-                  <Link href={`/matches/${match.id}`} className="block w-full">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                    >
-                      View Details
-                    </Button>
-                  </Link>
                 </CardContent>
               </Card>
             ))}
@@ -379,90 +329,7 @@ export default function TournamentFixtures({
 
         <TabsContent value="standings">
           <div className="max-w-7xl mx-auto px-6 py-6">
-            <h2 className="text-2xl font-bold mb-6 text-center">Pool Standings</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {pools.map(pool => (
-                <Card key={pool} className="overflow-hidden">
-                  <div className="bg-primary text-primary-foreground px-4 py-3">
-                    <h3 className="text-lg font-semibold">Pool {pool}</h3>
-                  </div>
-
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-left">Rank</TableHead>
-                            <TableHead className="text-left">Team</TableHead>
-                            <TableHead className="text-center">P</TableHead>
-                            <TableHead className="text-center">W</TableHead>
-                            <TableHead className="text-center">L</TableHead>
-                            <TableHead className="text-center">PF</TableHead>
-                            <TableHead className="text-center">PA</TableHead>
-                            <TableHead className="text-center">Diff</TableHead>
-                            <TableHead className="text-center">Pts</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {standingsByPool[pool]?.length > 0 ? (
-                            standingsByPool[pool].map((standing, index) => (
-                              <TableRow key={standing.teamId} className={index === 0 ? 'bg-green-50' : ''}>
-                                <TableCell className="font-medium">{index + 1}</TableCell>
-                                <TableCell>
-                                  <div className="font-medium">{getTeamName(standing.team)}</div>
-                                  {standing.team?.team_name && (
-                                    <div className="text-xs text-muted-foreground">{standing.team.team_name}</div>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-center">{standing.played}</TableCell>
-                                <TableCell className="text-center text-green-600 font-medium">{standing.won}</TableCell>
-                                <TableCell className="text-center text-red-600 font-medium">{standing.lost}</TableCell>
-                                <TableCell className="text-center">{standing.pointsFor}</TableCell>
-                                <TableCell className="text-center">{standing.pointsAgainst}</TableCell>
-                                <TableCell className={`text-center font-medium ${
-                                  standing.pointsDiff > 0 ? 'text-green-600' : standing.pointsDiff < 0 ? 'text-red-600' : ''
-                                }`}>
-                                  {standing.pointsDiff > 0 ? '+' : ''}{standing.pointsDiff}
-                                </TableCell>
-                                <TableCell className="text-center font-bold text-primary">{standing.points}</TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={9} className="text-center text-muted-foreground h-24">
-                                No completed matches in this pool yet
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <Card className="mt-8 bg-blue-50 border-blue-200">
-              <CardContent className="pt-6">
-                <h4 className="font-semibold text-blue-900 mb-2">Legend:</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-blue-800">
-                  <div><span className="font-semibold">P:</span> Played</div>
-                  <div><span className="font-semibold">W:</span> Won</div>
-                  <div><span className="font-semibold">L:</span> Lost</div>
-                  <div><span className="font-semibold">PF:</span> Points For</div>
-                  <div><span className="font-semibold">PA:</span> Points Against</div>
-                  <div><span className="font-semibold">Diff:</span> Point Difference</div>
-                  <div><span className="font-semibold">Pts:</span> League Points (2 for win)</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="table">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <h2 className="text-2xl font-bold mb-6 text-center">Overall Standings</h2>
+            <h2 className="text-2xl font-bold mb-6 text-center">Tournament Standings</h2>
 
             <Card className="overflow-hidden">
               <CardContent className="p-0">
@@ -471,59 +338,65 @@ export default function TournamentFixtures({
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-left">Rank</TableHead>
-                        <TableHead className="text-left">Team</TableHead>
-                        <TableHead className="text-center">Pool</TableHead>
+                        <TableHead className="text-left">Player</TableHead>
                         <TableHead className="text-center">Played</TableHead>
                         <TableHead className="text-center">Won</TableHead>
                         <TableHead className="text-center">Lost</TableHead>
-                        <TableHead className="text-center">Points For</TableHead>
-                        <TableHead className="text-center">Points Against</TableHead>
-                        <TableHead className="text-center">Difference</TableHead>
-                        <TableHead className="text-center">Points</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {(() => {
-                        const allStandings = pools.flatMap(pool =>
-                          (standingsByPool[pool] || []).map(s => ({ ...s, pool }))
-                        ).sort((a, b) => {
-                          if (b.points !== a.points) return b.points - a.points
-                          if (b.pointsDiff !== a.pointsDiff) return b.pointsDiff - a.pointsDiff
-                          return b.pointsFor - a.pointsFor
+                        // Calculate overall standings from all matches
+                        const playerStats: { [playerId: string]: { name: string, played: number, won: number, lost: number } } = {}
+
+                        matches.filter(m => m.status === 'completed').forEach(match => {
+                          const playerAId = match.slot_a || ''
+                          const playerBId = match.slot_b || ''
+                          const playerAName = match.player_a?.name || 'Unknown'
+                          const playerBName = match.player_b?.name || 'Unknown'
+
+                          if (!playerStats[playerAId]) {
+                            playerStats[playerAId] = { name: playerAName, played: 0, won: 0, lost: 0 }
+                          }
+                          if (!playerStats[playerBId]) {
+                            playerStats[playerBId] = { name: playerBName, played: 0, won: 0, lost: 0 }
+                          }
+
+                          playerStats[playerAId].played++
+                          playerStats[playerBId].played++
+
+                          if (match.winner === playerAId) {
+                            playerStats[playerAId].won++
+                            playerStats[playerBId].lost++
+                          } else if (match.winner === playerBId) {
+                            playerStats[playerBId].won++
+                            playerStats[playerAId].lost++
+                          }
                         })
 
-                        return allStandings.length > 0 ? allStandings.map((standing, index) => (
-                          <TableRow key={standing.teamId} className={index < 4 ? 'bg-yellow-50' : ''}>
+                        const standings = Object.entries(playerStats)
+                          .map(([id, stats]) => ({ id, ...stats }))
+                          .sort((a, b) => {
+                            if (b.won !== a.won) return b.won - a.won
+                            return a.lost - b.lost
+                          })
+
+                        return standings.length > 0 ? standings.map((standing, index) => (
+                          <TableRow key={standing.id} className={index === 0 ? 'bg-green-50' : ''}>
                             <TableCell className="font-medium">
                               {index + 1}
-                              {index < 4 && <span className="ml-2 text-xs text-yellow-600">★</span>}
+                              {index === 0 && <span className="ml-2 text-xs text-green-600">🏆</span>}
                             </TableCell>
                             <TableCell>
-                              <div className="font-medium">{getTeamName(standing.team)}</div>
-                              {standing.team?.team_name && (
-                                <div className="text-xs text-muted-foreground">{standing.team.team_name}</div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="secondary" className="w-8 h-8 rounded-full">
-                                {standing.pool}
-                              </Badge>
+                              <div className="font-medium">{standing.name}</div>
                             </TableCell>
                             <TableCell className="text-center">{standing.played}</TableCell>
                             <TableCell className="text-center text-green-600 font-medium">{standing.won}</TableCell>
                             <TableCell className="text-center text-red-600 font-medium">{standing.lost}</TableCell>
-                            <TableCell className="text-center">{standing.pointsFor}</TableCell>
-                            <TableCell className="text-center">{standing.pointsAgainst}</TableCell>
-                            <TableCell className={`text-center font-medium ${
-                              standing.pointsDiff > 0 ? 'text-green-600' : standing.pointsDiff < 0 ? 'text-red-600' : ''
-                            }`}>
-                              {standing.pointsDiff > 0 ? '+' : ''}{standing.pointsDiff}
-                            </TableCell>
-                            <TableCell className="text-center font-bold text-primary">{standing.points}</TableCell>
                           </TableRow>
                         )) : (
                           <TableRow>
-                            <TableCell colSpan={10} className="text-center text-muted-foreground h-24">
+                            <TableCell colSpan={5} className="text-center text-muted-foreground h-24">
                               No completed matches yet
                             </TableCell>
                           </TableRow>
@@ -534,26 +407,63 @@ export default function TournamentFixtures({
                 </div>
               </CardContent>
             </Card>
-
-            <Card className="mt-6 bg-yellow-50 border-yellow-200">
-              <CardContent className="pt-6">
-                <p className="text-sm text-yellow-800">
-                  <span className="font-semibold">★ Top 4 teams</span> will advance to the knockout stage
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="stats">
-          <div className="text-center py-12 text-muted-foreground">
-            Stats view coming soon...
           </div>
         </TabsContent>
 
         <TabsContent value="details">
-          <div className="text-center py-12 text-muted-foreground">
-            Details view coming soon...
+          <div className="max-w-4xl mx-auto px-6 py-6">
+            <h2 className="text-2xl font-bold mb-6 text-center">Tournament Details</h2>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">Tournament Name</h3>
+                      <p className="text-lg">{tournamentName}</p>
+                    </div>
+
+                    {location && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Location</h3>
+                        <p className="text-lg">{location}</p>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">Format</h3>
+                      <p className="text-lg">Single Elimination (Knockout)</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Matches</h3>
+                      <p className="text-lg">{matches.length} matches</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">Total Rounds</h3>
+                      <p className="text-lg">{rounds.length} {rounds.length === 1 ? 'round' : 'rounds'}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-2">Organizer</h3>
+                      <p className="text-lg">Dinker's Pickleball Academy</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-3">About</h3>
+                    <p className="text-gray-700 leading-relaxed">
+                      This knockout tournament is organized by Dinker's Pickleball Academy{location ? ` in ${location}` : ''}.
+                      The tournament features {matches.filter((m, i, arr) => arr.findIndex(m2 => m2.slot_a === m.slot_a || m2.slot_b === m.slot_a) === i).length} players
+                      competing across {rounds.length} {rounds.length === 1 ? 'round' : 'rounds'}
+                      in a single-elimination format. Each match is played as best of 3 games,
+                      and winners advance to the next round until a champion is crowned.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
